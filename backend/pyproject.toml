@@ -1,0 +1,32 @@
+[project]
+name = "elseview-backend"
+version = "0.1.0"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "fastapi", "uvicorn[standard]", "pydantic>=2,<3", "pydantic-settings",
+  "sqlalchemy>=2,<3", "psycopg[binary]>=3,<4", "alembic", "pyjwt",
+  "pwdlib[argon2]", "openai", "redis", "httpx",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-cov", "ruff", "pyyaml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "--strict-markers -ra"
+markers = [
+  "unit: isolated unit test", "db: real PostgreSQL required", "api: HTTP contracts",
+  "jobs: durable jobs", "contract: component contract", "integration: infrastructure",
+  "security: security checks", "e2e: end-to-end", "live_llm: explicit paid-provider test",
+  "load: load benchmark",
+  "cache: real isolated Valkey database",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501"]

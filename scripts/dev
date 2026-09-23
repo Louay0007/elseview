@@ -1,0 +1,14 @@
+#!/bin/sh
+set -eu
+PROJECT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd -P)
+if [ ! -f "$PROJECT_DIR/.env" ]; then
+    printf 'Missing .env. Run: python3 "%s/scripts/setup_dev.py"\n' "$PROJECT_DIR" >&2
+    exit 1
+fi
+if [ "$#" -eq 0 ]; then
+    printf 'Usage: %s <compose command> [arguments...]\n' "$0" >&2
+    exit 2
+fi
+exec docker compose --project-directory "$PROJECT_DIR" \
+    --env-file "$PROJECT_DIR/.env" \
+    -f "$PROJECT_DIR/compose.yaml" -f "$PROJECT_DIR/compose.dev.yaml" "$@"
