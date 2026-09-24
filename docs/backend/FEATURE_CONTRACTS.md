@@ -83,3 +83,18 @@ The detailed method registry is `/Users/user/Workspace/startup-act/docs/backend/
 | Exports/sharing/locales | Reports/storage/localization | Arabic-readable output, formula-safe spreadsheet and revocable shares |
 | Privacy and self-hosting | Privacy/ops | Mock-provider/offline core tests, cloud outage handling, derivative purge and successful isolated restore |
 
+## 8. Implemented targeting increment (partial C03)
+
+`GET /api/v1/recruiting/targeting-vocabulary` provides version `1`, the 249 allowed ISO alpha-2 country IDs, city-ID syntax, experience categories/levels, matching semantics and the private-targeting consent body/digest. These are self-reported targeting attributes, not verified qualifications.
+
+- `country_id`: optional uppercase ISO alpha-2 identifier.
+- `city_id`: optional `geonames:<positive ID of 1–10 digits>`; requires a country. The country/city association is **not verified** and no geolocation is inferred.
+- `experience`: optional `{version:"1", categories:{category:level}}`, with 1–10 categories. Categories are `software`, `design`, `research`, `business`, `education`, `healthcare`, `finance`, `manufacturing`, `retail`, `hospitality`; levels are `beginner`, `intermediate`, `advanced`.
+- Missing/null attributes remain unknown. A filter excludes unknown values. Levels match exactly, not by greater-than proficiency; requested categories intersect.
+
+Fetch `GET /api/v1/panel/consent?version=2` before a public profile PUT containing non-null targeting; send `document_version:"2"` and the presented digest. Version 1 remains the consent endpoint's default and its existing text/digest/replays remain compatible. Profile PUT is replacement, not patch. Profile responses retain `id`, `status`, `attributes` and add nullable `targeting_provenance` containing version, source, purpose, timestamp and consent metadata.
+
+Workspace recruitment estimates, launch configuration/quotas and public recruitment filters accept the same attributes. Private CSV import mappings accept `country_id`, `city_id`, and `experience` (JSON cell). Non-null targeting additionally requires `targeting_consent` with version `1`, purpose `private_panel_targeting`, `confirmed:true`, the vocabulary's consent digest in `presented_digest`, and the referenced workspace document digest in `document_digest`. This is an operator assertion, not proof of a participant's consent: the workspace must obtain the approved purpose-specific consent. Import responses add `targeting_summary` with known/unknown counts per targeting field for accepted, nonduplicate rows.
+
+Candidate snapshots remain frozen; private contacts are never merged across workspaces or with public profiles. Existing privacy lifecycle rules still apply. Browser wiring, approved consent wording, qualifications/history and six new PostgreSQL regressions remain acceptance work; unit tests alone do not certify them.
+

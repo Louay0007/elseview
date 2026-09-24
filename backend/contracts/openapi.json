@@ -338,6 +338,30 @@
             ],
             "title": "Age"
           },
+          "city_id": {
+            "anyOf": [
+              {
+                "pattern": "^geonames:[1-9][0-9]{0,9}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City Id"
+          },
+          "country_id": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Z]{2}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country Id"
+          },
           "devices": {
             "items": {
               "enum": [
@@ -351,6 +375,16 @@
             "title": "Devices",
             "type": "array"
           },
+          "experience": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Experience"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "languages": {
             "items": {
               "type": "string"
@@ -361,6 +395,98 @@
           }
         },
         "title": "Attributes",
+        "type": "object"
+      },
+      "AuthInstructionsResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "message": {
+            "const": "If the request is eligible, instructions will be delivered.",
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "AuthInstructionsResponse",
+        "type": "object"
+      },
+      "AuthLoginResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "access_token": {
+            "title": "Access Token",
+            "type": "string"
+          },
+          "csrf_token": {
+            "title": "Csrf Token",
+            "type": "string"
+          },
+          "expires_in": {
+            "exclusiveMinimum": 0.0,
+            "title": "Expires In",
+            "type": "integer"
+          },
+          "family_id": {
+            "format": "uuid",
+            "title": "Family Id",
+            "type": "string"
+          },
+          "token_type": {
+            "const": "bearer",
+            "title": "Token Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "access_token",
+          "token_type",
+          "expires_in",
+          "csrf_token",
+          "family_id"
+        ],
+        "title": "AuthLoginResponse",
+        "type": "object"
+      },
+      "AuthStatusResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "const": "ok",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "AuthStatusResponse",
+        "type": "object"
+      },
+      "AuthUserResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "display_name"
+        ],
+        "title": "AuthUserResponse",
         "type": "object"
       },
       "BatchBody": {
@@ -832,6 +958,70 @@
         "title": "ErrorEnvelope",
         "type": "object"
       },
+      "EstimateBody": {
+        "additionalProperties": false,
+        "properties": {
+          "depth": {
+            "default": "standard",
+            "enum": [
+              "quick",
+              "standard",
+              "deep"
+            ],
+            "title": "Depth",
+            "type": "string"
+          },
+          "instruction": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Instruction",
+            "type": "string"
+          },
+          "operation": {
+            "enum": [
+              "study_helper",
+              "themes",
+              "failure_clustering",
+              "translation",
+              "report_writer",
+              "research_qa",
+              "quality_suggestion",
+              "campaign_clarity",
+              "sentiment_suggestion"
+            ],
+            "title": "Operation",
+            "type": "string"
+          },
+          "researcher_text_approved": {
+            "default": false,
+            "title": "Researcher Text Approved",
+            "type": "boolean"
+          },
+          "snapshot_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snapshot Id"
+          },
+          "study_id": {
+            "format": "uuid",
+            "title": "Study Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "study_id",
+          "operation"
+        ],
+        "title": "EstimateBody",
+        "type": "object"
+      },
       "EventBody": {
         "additionalProperties": false,
         "properties": {
@@ -853,6 +1043,51 @@
           "event"
         ],
         "title": "EventBody",
+        "type": "object"
+      },
+      "Experience": {
+        "additionalProperties": false,
+        "description": "Self-reported familiarity, never a qualification or professional credential.",
+        "properties": {
+          "categories": {
+            "additionalProperties": {
+              "enum": [
+                "beginner",
+                "intermediate",
+                "advanced"
+              ],
+              "type": "string"
+            },
+            "maxProperties": 10,
+            "minProperties": 1,
+            "propertyNames": {
+              "enum": [
+                "software",
+                "design",
+                "research",
+                "business",
+                "education",
+                "healthcare",
+                "finance",
+                "manufacturing",
+                "retail",
+                "hospitality"
+              ]
+            },
+            "title": "Categories",
+            "type": "object"
+          },
+          "version": {
+            "const": "1",
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version",
+          "categories"
+        ],
+        "title": "Experience",
         "type": "object"
       },
       "ExportBody": {
@@ -898,6 +1133,30 @@
       "Filters": {
         "additionalProperties": false,
         "properties": {
+          "city_id": {
+            "anyOf": [
+              {
+                "pattern": "^geonames:[1-9][0-9]{0,9}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City Id"
+          },
+          "country_id": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Z]{2}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country Id"
+          },
           "device": {
             "anyOf": [
               {
@@ -913,6 +1172,16 @@
               }
             ],
             "title": "Device"
+          },
+          "experience": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Experience"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "language": {
             "anyOf": [
@@ -1052,6 +1321,16 @@
             "minLength": 1,
             "title": "Source",
             "type": "string"
+          },
+          "targeting_consent": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PrivateTargetingConsent"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -1826,7 +2105,10 @@
             "type": "string"
           },
           "document_version": {
-            "const": "1",
+            "enum": [
+              "1",
+              "2"
+            ],
             "title": "Document Version",
             "type": "string"
           },
@@ -2095,6 +2377,45 @@
           "request_key"
         ],
         "title": "PrivacyBody",
+        "type": "object"
+      },
+      "PrivateTargetingConsent": {
+        "additionalProperties": false,
+        "properties": {
+          "confirmed": {
+            "const": true,
+            "title": "Confirmed",
+            "type": "boolean"
+          },
+          "document_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Document Digest",
+            "type": "string"
+          },
+          "presented_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Presented Digest",
+            "type": "string"
+          },
+          "purpose": {
+            "const": "private_panel_targeting",
+            "title": "Purpose",
+            "type": "string"
+          },
+          "version": {
+            "const": "1",
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version",
+          "purpose",
+          "confirmed",
+          "presented_digest",
+          "document_digest"
+        ],
+        "title": "PrivateTargetingConsent",
         "type": "object"
       },
       "PublicRecruitBody": {
@@ -2659,6 +2980,16 @@
             "maxLength": 100,
             "minLength": 1,
             "title": "Command Key",
+            "type": "string"
+          },
+          "depth": {
+            "default": "standard",
+            "enum": [
+              "quick",
+              "standard",
+              "deep"
+            ],
+            "title": "Depth",
             "type": "string"
           },
           "instruction": {
@@ -4200,7 +4531,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/AuthLoginResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -4444,7 +4777,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/AuthStatusResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -4571,7 +4906,9 @@
           "202": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/AuthInstructionsResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -4689,7 +5026,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/AuthLoginResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -4820,7 +5159,9 @@
           "202": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/AuthInstructionsResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -4947,7 +5288,9 @@
           "202": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/AuthInstructionsResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -5074,7 +5417,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/AuthStatusResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -7086,7 +7431,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/AuthUserResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -7587,6 +7934,22 @@
     "/api/v1/panel/consent": {
       "get": {
         "operationId": "panel_document_api_v1_panel_consent_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "version",
+            "required": false,
+            "schema": {
+              "default": "1",
+              "enum": [
+                "1",
+                "2"
+              ],
+              "title": "Version",
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -9899,6 +10262,126 @@
           }
         ],
         "summary": "Screen",
+        "tags": [
+          "recruiting"
+        ]
+      }
+    },
+    "/api/v1/recruiting/targeting-vocabulary": {
+      "get": {
+        "operationId": "targeting_vocabulary_api_v1_recruiting_targeting_vocabulary_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Safe error envelope; no internal exception or request data."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Safe error envelope; no internal exception or request data."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Safe error envelope; no internal exception or request data."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Safe error envelope; no internal exception or request data."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Safe error envelope; no internal exception or request data."
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Safe error envelope; no internal exception or request data."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Safe error envelope; no internal exception or request data."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Safe error envelope; no internal exception or request data."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Safe error envelope; no internal exception or request data."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Safe error envelope; no internal exception or request data."
+          }
+        },
+        "security": [],
+        "summary": "Targeting Vocabulary",
         "tags": [
           "recruiting"
         ]
@@ -13627,6 +14110,152 @@
           }
         ],
         "summary": "Get Workspace"
+      }
+    },
+    "/api/v1/workspaces/{workspace_id}/ai/estimate": {
+      "post": {
+        "operationId": "estimate_api_v1_workspaces__workspace_id__ai_estimate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EstimateBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Safe error envelope; no internal exception or request data."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Safe error envelope; no internal exception or request data."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Safe error envelope; no internal exception or request data."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Safe error envelope; no internal exception or request data."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Safe error envelope; no internal exception or request data."
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Safe error envelope; no internal exception or request data."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Safe error envelope; no internal exception or request data."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Safe error envelope; no internal exception or request data."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Safe error envelope; no internal exception or request data."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Safe error envelope; no internal exception or request data."
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Estimate",
+        "tags": [
+          "ai"
+        ]
       }
     },
     "/api/v1/workspaces/{workspace_id}/ai/runs": {

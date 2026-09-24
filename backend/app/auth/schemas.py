@@ -1,5 +1,6 @@
 import re
 from typing import Literal
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
 
@@ -13,6 +14,28 @@ def normalize_email(value: str) -> str:
 
 class StrictSchema(BaseModel):
     model_config = ConfigDict(extra="forbid", hide_input_in_errors=True)
+
+
+class AuthInstructionsResponse(StrictSchema):
+    message: Literal["If the request is eligible, instructions will be delivered."]
+
+
+class AuthStatusResponse(StrictSchema):
+    status: Literal["ok"]
+
+
+class AuthUserResponse(StrictSchema):
+    id: UUID
+    email: str
+    display_name: str
+
+
+class AuthLoginResponse(StrictSchema):
+    access_token: str
+    token_type: Literal["bearer"]
+    expires_in: int = Field(gt=0)
+    csrf_token: str
+    family_id: UUID
 
 
 class EmailBody(StrictSchema):

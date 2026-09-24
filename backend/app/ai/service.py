@@ -28,7 +28,7 @@ from app.jobs import service as jobs
 from app.jobs.models import Job
 from app.studies.service import authorize
 
-from . import adapter
+from . import adapter, profiles
 from .models import AIAttempt, AIEvidence, AIRun, UsageBudget
 
 
@@ -118,12 +118,104 @@ def budgets(session, run, day):
     return result
 
 
+def validate_request(settings, body):
+    if settings.ai_mode == "disabled":
+        denied("AI_DISABLED")
+    if body.instruction and not body.researcher_text_approved:
+        denied("AI_TEXT_APPROVAL_REQUIRED")
+    if not body.snapshot_id and body.operation not in {
+        "study_helper",
+        "campaign_clarity",
+        "translation",
+    }:
+        denied("AI_SNAPSHOT_REQUIRED")
+
+
+def candidate(settings, workspace, actor_id, body):
+    validate_request(settings, body)
+    return AIRun(
+        workspace_id=workspace.id,
+        study_id=body.study_id,
+        snapshot_id=body.snapshot_id,
+        requester_id=actor_id,
+        operation=body.operation,
+        instruction=adapter.redact(body.instruction),
+        privacy_epoch=workspace.privacy_epoch,
+        config=config(settings)
+        | {
+            "budget_study_scope": f"study:{body.study_id}",
+            "depth_profile": profiles.resolve(settings, body.depth),
+        },
+        state="queued",
+    )
+
+
+def plan(session, settings, run):
+    sources, metrics = context(session, run)
+    profile = profiles.effective(run.config)
+    effective_settings = profiles.execution_settings(settings, run.config)
+    parts, coverage = adapter.chunks(
+        sources,
+        max_chars=profile["max_source_chars"],
+        size=profile["chunk_size"],
+        overlap=profile["chunk_overlap"],
+        max_chunks=profile["max_chunks"],
+    )
+    prompt = adapter.messages(run.operation, run.instruction, parts, metrics)
+    try:
+        estimate = adapter.estimate_details(effective_settings, prompt)
+    except ValueError:
+        denied("AI_CONTEXT_LIMIT")
+    estimate |= {
+        "depth_profile": profile,
+        "coverage": {key: value for key, value in coverage.items() if key != "spans"},
+        "source_chars_included_with_overlap": sum(len(part["text"]) for part in parts),
+        "chunks_included": len(parts),
+        "reservation_created": False,
+        "budget_checked": False,
+    }
+    return prompt, sources, coverage, estimate
+
+
+def cache_identity(run, prompt, *, legacy=False):
+    run_config = run.config
+    if legacy:
+        run_config = {key: value for key, value in run_config.items() if key != "depth_profile"}
+    return adapter.digest(
+        {
+            "workspace": str(run.workspace_id),
+            "study": str(run.study_id),
+            "snapshot": str(run.snapshot_id),
+            "epoch": run.privacy_epoch,
+            "config": run_config,
+            "prompt": prompt,
+        }
+    )
+
+
+def request_identity(body):
+    excluded = {"command_key"}
+    # The compatible default must also replay commands written before depth existed.
+    if body.depth == "standard":
+        excluded.add("depth")
+    return adapter.digest(body.model_dump(mode="json", exclude=excluded))
+
+
+def estimate(session, settings, workspace_id, actor_id, body):
+    validate_request(settings, body)
+    workspace = lock_workspace(session, workspace_id)
+    authorize(session, workspace_id, actor_id, body.study_id, "ai")
+    run = candidate(settings, workspace, actor_id, body)
+    _, _, _, result = plan(session, settings, run)
+    return result
+
+
 def create(session, settings, workspace_id, actor_id, body):
     if settings.ai_mode == "disabled":
         denied("AI_DISABLED")
     workspace = lock_workspace(session, workspace_id)
     authorize(session, workspace_id, actor_id, body.study_id, "ai")
-    request_hash = adapter.digest(body.model_dump(mode="json", exclude={"command_key"}))
+    request_hash = request_identity(body)
     prior = session.scalar(
         select(AIRun).where(
             AIRun.workspace_id == workspace_id,
@@ -135,54 +227,22 @@ def create(session, settings, workspace_id, actor_id, body):
         if prior.request_hash != request_hash:
             denied("IDEMPOTENCY_CONFLICT")
         return view(session, workspace_id, actor_id, prior.id)
-    if body.instruction and not body.researcher_text_approved:
-        denied("AI_TEXT_APPROVAL_REQUIRED")
-    if not body.snapshot_id and body.operation not in {
-        "study_helper",
-        "campaign_clarity",
-        "translation",
-    }:
-        denied("AI_SNAPSHOT_REQUIRED")
-    run = AIRun(
-        workspace_id=workspace_id,
-        study_id=body.study_id,
-        snapshot_id=body.snapshot_id,
-        requester_id=actor_id,
-        command_key=body.command_key,
-        request_hash=request_hash,
-        operation=body.operation,
-        instruction=adapter.redact(body.instruction),
-        privacy_epoch=workspace.privacy_epoch,
-        config=config(settings),
-        cache_key="",
-        state="queued",
-    )
-    run.config = run.config | {"budget_study_scope": f"study:{run.study_id}"}
-    sources, metrics = context(session, run)
-    parts, run.coverage = adapter.chunks(
-        sources, max_chars=max(500, settings.llm_context_limit // 3)
-    )
-    prompt = adapter.messages(run.operation, run.instruction, parts, metrics)
-    try:
-        amount = adapter.estimate(settings, prompt)
-    except ValueError:
-        denied("AI_CONTEXT_LIMIT")
-    run.cache_key = adapter.digest(
-        {
-            "workspace": str(workspace_id),
-            "study": str(run.study_id),
-            "snapshot": str(run.snapshot_id),
-            "epoch": run.privacy_epoch,
-            "config": run.config,
-            "prompt": prompt,
-        }
-    )
+    run = candidate(settings, workspace, actor_id, body)
+    run.command_key, run.request_hash = body.command_key, request_hash
+    prompt, _, run.coverage, projection = plan(session, settings, run)
+    amount = Decimal(projection["reserved_cost"])
+    run.cache_key = cache_identity(run, prompt)
+    cache_keys = [run.cache_key]
+    if body.depth == "standard" and run.config["depth_profile"]["revision"] == "1":
+        # Only revision 1 is known equivalent to legacy behavior.
+        # Reuse legacy results and retain their uncertain-charge/retry fences.
+        cache_keys.append(cache_identity(run, prompt, legacy=True))
     cached = session.scalar(
         select(AIRun)
         .where(
             AIRun.workspace_id == workspace_id,
             AIRun.requester_id == actor_id,
-            AIRun.cache_key == run.cache_key,
+            AIRun.cache_key.in_(cache_keys),
             AIRun.state.in_(["draft", "approved"]),
         )
         .limit(1)
@@ -194,7 +254,7 @@ def create(session, settings, workspace_id, actor_id, body):
         .join(AIAttempt, AIAttempt.run_id == AIRun.id)
         .where(
             AIRun.workspace_id == workspace_id,
-            AIRun.cache_key == run.cache_key,
+            AIRun.cache_key.in_(cache_keys),
             AIAttempt.state.in_(["reserved", "sent", "uncertain"]),
         )
         .limit(1)
@@ -204,7 +264,7 @@ def create(session, settings, workspace_id, actor_id, body):
     previous = session.scalars(
         select(AIAttempt)
         .join(AIRun, AIRun.id == AIAttempt.run_id)
-        .where(AIRun.workspace_id == workspace_id, AIRun.cache_key == run.cache_key)
+        .where(AIRun.workspace_id == workspace_id, AIRun.cache_key.in_(cache_keys))
         .order_by(AIAttempt.created_at.desc())
         .limit(2)
     ).all()
@@ -305,7 +365,7 @@ def fail_job(session, job, code=None):
         run.state = "uncertain" if attempt and attempt.state == "uncertain" else "failed"
 
 
-def prepare(session, settings, job, dispatch=True):
+def prepare(session, settings, job, dispatch=True, *, include_settings=False):
     current = jobs._fence(session, job.id, job.lease_token)
     if current is None:
         denied()
@@ -314,16 +374,18 @@ def prepare(session, settings, job, dispatch=True):
     if attempt.budget_day != jobs.now(session).date().isoformat():
         denied("AI_RESERVATION_EXPIRED")
     if attempt.state != "reserved" or {
-        k: v for k, v in run.config.items() if k != "budget_study_scope"
+        k: v for k, v in run.config.items() if k not in {"budget_study_scope", "depth_profile"}
     } != config(settings):
         denied("AI_DISPATCH_BLOCKED")
-    sources, metrics = context(session, run)
-    parts, coverage = adapter.chunks(sources, max_chars=max(500, settings.llm_context_limit // 3))
-    if coverage != run.coverage:
+    prompt, sources, coverage, projection = plan(session, settings, run)
+    if coverage != run.coverage or Decimal(projection["reserved_cost"]) > attempt.reserved_cost:
         denied()
     if dispatch:
         attempt.state, run.state = "sent", "running"
-    return adapter.messages(run.operation, run.instruction, parts, metrics), sources, coverage
+    prepared = prompt, sources, coverage
+    if include_settings:
+        return (*prepared, profiles.execution_settings(settings, run.config))
+    return prepared
 
 
 def finish(session, settings, job, content, usage, request_id, sources, coverage):
@@ -335,6 +397,7 @@ def finish(session, settings, job, content, usage, request_id, sources, coverage
     if attempt.state != "sent":
         denied()
     context(session, run)
+    settings = profiles.execution_settings(settings, run.config)
     attempt.request_id = (request_id or "")[:200]
     valid_usage = isinstance(usage, dict) and all(
         type(usage.get(k)) is int and usage[k] >= 0 for k in ("prompt_tokens", "completion_tokens")
@@ -353,7 +416,11 @@ def finish(session, settings, job, content, usage, request_id, sources, coverage
         attempt.state = "uncertain"
     try:
         output, evidence = adapter.validate_output(
-            content, sources, coverage, require_evidence=run.snapshot_id is not None
+            content,
+            sources,
+            coverage,
+            require_evidence=run.snapshot_id is not None,
+            max_output_bytes=profiles.effective(run.config)["max_output_bytes"],
         )
     except ValueError:
         run.state = "failed"
@@ -402,7 +469,7 @@ async def execute(database, settings, job):
         lease = None
         try:
             with database.sessions.begin() as session:
-                prepared = prepare(session, settings, job)
+                prepared = prepare(session, settings, job, include_settings=True)
                 lease = transfer(session, job.workspace_id)
             return prepared, lease
         except BaseException:
@@ -412,7 +479,7 @@ async def execute(database, settings, job):
 
     authorization = asyncio.create_task(asyncio.to_thread(authorize_dispatch))
     try:
-        (prompt, sources, coverage), lease = await asyncio.shield(authorization)
+        (prompt, sources, coverage, effective_settings), lease = await asyncio.shield(authorization)
     except BaseException:
         # Cancelling to_thread does not stop its transaction. Its eventual lease
         # must be released even when this coroutine has already gone away.
@@ -426,12 +493,12 @@ async def execute(database, settings, job):
 
         authorization.add_done_callback(discard)
         raise
-    if settings.ai_mode != "live":
+    if effective_settings.ai_mode != "live":
         lease.release()  # No network bytes; never block mutations on fake I/O.
     token = adapter.dispatch_lease.set(lease)
     try:
         try:
-            content, usage, request_id = await adapter.generate(settings, prompt)
+            content, usage, request_id = await adapter.generate(effective_settings, prompt)
         finally:
             # Includes failed connect, cancelled send, and provider cleanup.
             # No DB operation is allowed until this ownership ends.
@@ -485,6 +552,7 @@ def view(session, workspace_id, actor_id, run_id):
         "state": run.state,
         "draft": run.output,
         "coverage": run.coverage,
+        "depth_profile": profiles.effective(run.config),
         "charge_state": attempt.state if attempt else None,
         "reserved_cost": str(attempt.reserved_cost) if attempt else None,
         "actual_cost": str(attempt.actual_cost)

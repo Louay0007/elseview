@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException
 
-from app.auth.delivery import deliver_local
+from app.auth.delivery import deliver
 from app.auth.router import router as auth_router
 from app.auth.service import AuthService
 from app.common.errors import DomainError
@@ -216,7 +216,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.cache = Cache(settings)
     app.state.rate_limiter = RateLimiter(settings)
     app.state.auth = AuthService(
-        database, settings, lambda email, purpose, raw: deliver_local(settings, email, purpose, raw)
+        database, settings, lambda email, purpose, raw: deliver(settings, email, purpose, raw)
     )
     app.include_router(auth_router)
     from app.common.privacy_router import router as privacy_router

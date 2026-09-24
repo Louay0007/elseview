@@ -2,6 +2,8 @@
 
 **Brand:** Elseview — See what you’re missing.
 
+**What remains:** [Completion and release plan](BACKEND_COMPLETION_PLAN.md) tracks missing features, full-product acceptance and production prerequisites. For the latest executed backend evidence and schema head, use [Implementation status](docs/backend/IMPLEMENTATION_STATUS.md); older phase descriptions below are historical checkpoints.
+
 P18 adds checked OpenAPI/error contracts, React/browser contract fixtures, guarded
 load measurements and restart checks. P19 adds integrated backend acceptance and
 a ten-story coverage map; remaining combined browser/live-provider/production
@@ -88,7 +90,11 @@ All routes use `/api/v1`. Auth writes require `Origin: http://localhost:8080` in
 
 Refresh requires the cookie, allowed Origin and `X-CSRF-Token`. Logout requires the bearer and allowed Origin, plus the bound CSRF token when a refresh cookie is present. Other authenticated APIs use an explicit bearer token, not automatic cookie authentication. Keep browser access tokens in memory. Refresh replay revokes the family; reset invalidates all existing access sessions.
 
-**Development email:** verification/reset/invitation messages are written to private `/app/private/dev-mail/*.json` inside the backend volume, with directory/file permissions 0700/0600. An operator can inspect that mailbox using `scripts/dev exec`; it is not exposed through an HTTP endpoint and tokens are not printed in logs. Files expire from the spool after 24 hours during subsequent delivery, with a 1,000-message cap. Token validity is separately enforced by the database. This is not production SMTP delivery. Failed delivery can be retried through verification/reset requests; do not publish the mailbox or backups.
+**Development email:** verification/reset/invitation messages are written to private `/app/private/dev-mail/*.json` inside the backend volume, with directory/file permissions 0700/0600. An operator can inspect that mailbox using `scripts/dev exec`; it is not exposed through an HTTP endpoint and tokens are not printed in logs. Files expire from the spool after 24 hours during subsequent delivery, with a 1,000-message cap. Token validity is separately enforced by the database. This remains the default development transport. Delivery can be requested again through verification/reset requests; do not publish the mailbox or backups.
+
+**Opt-in SMTP transport (partial C02):** `MAIL_MODE=smtp` requires `APP_ENV=production`, HTTPS origin settings, `SMTP_DELIVERY_APPROVED=true`, a configured `SMTP_HOST`/`SMTP_SENDER`, and operator-provisioned `SMTP_USERNAME`/`SMTP_PASSWORD`. `SMTP_TLS=implicit` (default port 465) or `starttls` (set the provider's port explicitly) requires certificate-verified TLS before authentication; plaintext fallback is not supported. `SMTP_TIMEOUT_SECONDS` defaults to 5, bounded to 15 per socket operation. `MAIL_MODE=disabled` prevents delivery. Configure these in the backend process environment; the local Compose configuration does not forward them automatically. No account/domain is provisioned or activated by this repository.
+
+The adapter sends verification, reset and workspace-invitation codes only, does not log message contents, and never automatically retries an uncertain SMTP send. Public auth requests keep their generic response on delivery failures; operators receive only a redacted outcome code. **This is not completed production email:** delivery is synchronous after the database commit, response timing may reveal eligibility, subsequent token requests invalidate older codes, and there is no durable delivery/reconciliation queue, recruitment/reminder transport, domain authentication or live deliverability evidence. Keep production rollout gated on the rest of C02; an SMTP server accepting a message does not prove inbox delivery.
 
 Workspace roles are owner, admin, researcher, reviewer and viewer. Membership is always checked against active user/workspace status. Only owners can promote/demote owners or administrators; removing the final owner is rejected under a workspace lock. Study access additionally requires ownership or an explicit role-bounded study grant. Participant research capabilities remain P06/P07 work; they are not workspace staff roles.
 

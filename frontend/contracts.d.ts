@@ -1,13 +1,48 @@
-// Request/error subset reviewed against backend/contracts/openapi.json.
-// String bounds, UUID syntax, strict integers and cross-field rules remain
-// server validated. This file does not claim unconstrained response schemas.
+// Request/error and explicit auth success subset reviewed against
+// backend/contracts/openapi.json. String bounds, UUID syntax, strict integers
+// and cross-field rules remain server validated. Other untyped responses
+// are not claimed as covered by this file.
 export type UUID = string;
 export interface ErrorDetail { code: string; message: string }
 export interface ErrorEnvelope { error: ErrorDetail; request_id: string }
+export interface AuthInstructionsResponse {
+  message: 'If the request is eligible, instructions will be delivered.';
+}
+export interface AuthStatusResponse { status: 'ok' }
+export interface AuthUserResponse { id: UUID; email: string; display_name: string }
+export interface AuthLoginResponse {
+  access_token: string;
+  token_type: 'bearer';
+  expires_in: number;
+  csrf_token: string;
+  family_id: UUID;
+}
+// The refresh capability is deliberately absent: it remains an HttpOnly cookie.
 export interface RegisterBody {
   email: string;
   password: string;
   display_name?: string;
+}
+export type ExperienceCategory = 'software' | 'design' | 'research' | 'business' |
+  'education' | 'healthcare' | 'finance' | 'manufacturing' | 'retail' | 'hospitality';
+export type ExperienceLevel = 'beginner' | 'intermediate' | 'advanced';
+export interface RecruitingExperience {
+  version: '1';
+  categories: Partial<Record<ExperienceCategory, ExperienceLevel>>;
+}
+// Fetch the targeting vocabulary; country/city syntax and 1–10 categories are
+// server validated. These self-reported fields never grant qualifications.
+export interface RecruitingTargetingAttributes {
+  country_id?: string | null;
+  city_id?: string | null;
+  experience?: RecruitingExperience | null;
+}
+export interface PrivateTargetingConsent {
+  version: '1';
+  purpose: 'private_panel_targeting';
+  confirmed: true;
+  presented_digest: string;
+  document_digest: string;
 }
 export interface StudyBody {
   title: string;

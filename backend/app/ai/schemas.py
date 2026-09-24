@@ -4,6 +4,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from .profiles import Depth
+
 Operation = Literal[
     "study_helper",
     "themes",
@@ -21,13 +23,17 @@ class Strict(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-class RunBody(Strict):
+class EstimateBody(Strict):
     study_id: UUID
     snapshot_id: UUID | None = None
     operation: Operation
     instruction: str = Field(default="", max_length=2000)
-    command_key: str = Field(min_length=1, max_length=100)
     researcher_text_approved: bool = False
+    depth: Depth = "standard"
+
+
+class RunBody(EstimateBody):
+    command_key: str = Field(min_length=1, max_length=100)
 
 
 class Evidence(Strict):

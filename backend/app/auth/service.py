@@ -1,5 +1,6 @@
 """Service-owned transactions and deny-by-default workspace capabilities."""
 
+import logging
 from datetime import timedelta
 from uuid import uuid4
 
@@ -25,6 +26,8 @@ from app.auth.security import (
     verify_password,
 )
 from app.common.errors import DomainError
+
+logger = logging.getLogger(__name__)
 
 CAPABILITIES = {
     "privacy.manage": {"owner", "admin"},
@@ -99,6 +102,15 @@ class AuthService:
     def __init__(self, database, settings, deliver):
         self.database, self.settings, self.deliver = database, settings, deliver
 
+    def _deliver_instructions(self, email, purpose, raw):
+        try:
+            self.deliver(email, purpose, raw)
+        except DomainError as exc:
+            if exc.code not in {"DELIVERY_UNAVAILABLE", "DELIVERY_REJECTED", "DELIVERY_UNCERTAIN"}:
+                raise
+            # Public recovery/registration responses must not reveal eligible accounts.
+            logger.warning("Auth instruction delivery did not confirm acceptance: %s", exc.code)
+
     def register(self, email, password, display_name):
         # Hash in both new/duplicate cases; do not change an existing account's password.
         hashed = password_hasher.hash(password)
@@ -122,7 +134,7 @@ class AuthService:
                 raw = _issue_one_time(session, user, "verify", self.settings.auth_verify_seconds)
                 audit(session, "auth.register", user.id)
         if raw:
-            self.deliver(email, "verify", raw)
+            self._deliver_instructions(email, "verify", raw)
 
     def request_token(self, email, purpose):
         raw = None
@@ -136,7 +148,7 @@ class AuthService:
                 raw = _issue_one_time(session, user, purpose, self.settings.auth_verify_seconds)
                 audit(session, f"auth.{purpose}_requested", user.id)
         if raw:
-            self.deliver(email, purpose, raw)
+            self._deliver_instructions(email, purpose, raw)
 
     def consume_token(self, raw, purpose, new_password=None):
         hashed = password_hasher.hash(new_password) if new_password is not None else None

@@ -1,11 +1,102 @@
-"""Development-only private mail spool: no token in HTTP responses or operational logs."""
+"""Opt-in TLS mail transport and private local capture; never log message contents."""
 
 import json
 import os
+import smtplib
+import ssl
 import time
+from email.errors import HeaderParseError
+from email.headerregistry import Address
+from email.message import EmailMessage
 from uuid import uuid4
 
 from app.common.errors import DomainError
+
+SUBJECTS = {
+    "verify": "Verify your Elseview email",
+    "reset": "Reset your Elseview password",
+    "workspace_invite": "Your Elseview workspace invitation",
+}
+
+
+def deliver(settings, email, purpose, token):
+    if settings.mail_mode == "local":
+        return deliver_local(settings, email, purpose, token)
+    if settings.mail_mode != "smtp" or settings.app_env != "production":
+        raise DomainError("DELIVERY_UNAVAILABLE", "Delivery is not configured.", 503)
+    return deliver_smtp(settings, email, purpose, token)
+
+
+def deliver_smtp(settings, email, purpose, token):
+    if not settings.smtp_delivery_approved:
+        raise DomainError("DELIVERY_UNAVAILABLE", "Delivery is not configured.", 503)
+    try:
+        recipient = Address(addr_spec=email)
+        sender = Address(addr_spec=settings.smtp_sender)
+        if (
+            not recipient.username
+            or not recipient.domain
+            or not email.isascii()
+            or purpose not in SUBJECTS
+            or not isinstance(token, str)
+            or not 1 <= len(token) <= 256
+            or any(ord(c) < 33 or ord(c) > 126 for c in token)
+        ):
+            raise ValueError("Invalid delivery input")
+        message = EmailMessage()
+        message["From"] = sender
+        message["To"] = recipient
+        message["Subject"] = SUBJECTS[purpose]
+        message.set_content(
+            "Use this one-time code in Elseview to complete your request:\n\n"
+            + token
+            + "\n\nDo not share this code. If you did not request it, ignore this message.\n"
+        )
+    except (TypeError, ValueError, HeaderParseError):
+        raise DomainError("DELIVERY_UNAVAILABLE", "Delivery cannot be prepared.", 503) from None
+
+    connection = None
+    dispatching = False
+    try:
+        context = ssl.create_default_context()
+        if settings.smtp_tls == "implicit":
+            connection = smtplib.SMTP_SSL(
+                settings.smtp_host,
+                settings.smtp_port,
+                timeout=settings.smtp_timeout_seconds,
+                context=context,
+            )
+        else:
+            connection = smtplib.SMTP(
+                settings.smtp_host, settings.smtp_port, timeout=settings.smtp_timeout_seconds
+            )
+            connection.ehlo()
+            connection.starttls(context=context)
+            connection.ehlo()
+        connection.login(
+            settings.smtp_username.get_secret_value(), settings.smtp_password.get_secret_value()
+        )
+        dispatching = True
+        refused = connection.send_message(
+            message, from_addr=sender.addr_spec, to_addrs=[recipient.addr_spec]
+        )
+        if refused:
+            raise smtplib.SMTPRecipientsRefused(refused)
+    except (smtplib.SMTPRecipientsRefused, smtplib.SMTPSenderRefused):
+        raise DomainError("DELIVERY_REJECTED", "Delivery was rejected.", 503) from None
+    except smtplib.SMTPDataError as exc:
+        code = "DELIVERY_REJECTED" if 400 <= exc.smtp_code < 600 else "DELIVERY_UNCERTAIN"
+        raise DomainError(code, "Delivery was not confirmed.", 503) from None
+    except (smtplib.SMTPException, OSError, UnicodeError):
+        code = "DELIVERY_UNCERTAIN" if dispatching else "DELIVERY_UNAVAILABLE"
+        raise DomainError(code, "Delivery was not confirmed.", 503) from None
+    finally:
+        if connection is not None:
+            # QUIT failure after DATA acceptance must not turn a successful send into a retry.
+            try:
+                connection.close()
+            except (smtplib.SMTPException, OSError):
+                pass
 
 
 def deliver_local(settings, email, purpose, token):

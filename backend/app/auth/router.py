@@ -7,6 +7,10 @@ from sqlalchemy import select
 from app.auth.dependencies import check_origin, current_user, rate_limit
 from app.auth.models import AuditEvent, Membership, RefreshToken, User, Workspace
 from app.auth.schemas import (
+    AuthInstructionsResponse,
+    AuthLoginResponse,
+    AuthStatusResponse,
+    AuthUserResponse,
     EmailBody,
     InviteBody,
     LoginBody,
@@ -59,7 +63,7 @@ def login_response(request, response, result):
     return result
 
 
-@router.post("/auth/register", status_code=202)
+@router.post("/auth/register", status_code=202, response_model=AuthInstructionsResponse)
 def register(body: RegisterBody, request: Request):
     check_origin(request)
     rate_limit(request, "register", body.email, 5)
@@ -67,7 +71,7 @@ def register(body: RegisterBody, request: Request):
     return GENERIC
 
 
-@router.post("/auth/verification/request", status_code=202)
+@router.post("/auth/verification/request", status_code=202, response_model=AuthInstructionsResponse)
 def verification_request(body: EmailBody, request: Request):
     check_origin(request)
     rate_limit(request, "verification", body.email, 5)
@@ -75,7 +79,7 @@ def verification_request(body: EmailBody, request: Request):
     return GENERIC
 
 
-@router.post("/auth/verify-email")
+@router.post("/auth/verify-email", response_model=AuthStatusResponse)
 def verify_email(body: TokenBody, request: Request):
     check_origin(request)
     rate_limit(request, "verify", request.client.host)
@@ -83,7 +87,7 @@ def verify_email(body: TokenBody, request: Request):
     return {"status": "ok"}
 
 
-@router.post("/auth/login")
+@router.post("/auth/login", response_model=AuthLoginResponse)
 def login(body: LoginBody, request: Request, response: Response):
     check_origin(request)
     rate_limit(request, "login", body.email)
@@ -91,7 +95,7 @@ def login(body: LoginBody, request: Request, response: Response):
     return login_response(request, response, result)
 
 
-@router.post("/auth/refresh")
+@router.post("/auth/refresh", response_model=AuthLoginResponse)
 def refresh(request: Request, response: Response):
     check_origin(request)
     rate_limit(request, "refresh", request.client.host, 30)
@@ -125,7 +129,9 @@ def logout(request: Request, response: Response, user: Actor):
     response.delete_cookie(COOKIE, path="/api/v1/auth")
 
 
-@router.post("/auth/password-reset/request", status_code=202)
+@router.post(
+    "/auth/password-reset/request", status_code=202, response_model=AuthInstructionsResponse
+)
 def reset_request(body: EmailBody, request: Request):
     check_origin(request)
     rate_limit(request, "reset", body.email, 5)
@@ -133,7 +139,7 @@ def reset_request(body: EmailBody, request: Request):
     return GENERIC
 
 
-@router.post("/auth/password-reset/confirm")
+@router.post("/auth/password-reset/confirm", response_model=AuthStatusResponse)
 def reset_confirm(body: ResetBody, request: Request):
     check_origin(request)
     rate_limit(request, "reset_confirm", request.client.host)
@@ -143,7 +149,7 @@ def reset_confirm(body: ResetBody, request: Request):
     return {"status": "ok"}
 
 
-@router.get("/me")
+@router.get("/me", response_model=AuthUserResponse)
 def me(user: Actor):
     return user_view(user)
 

@@ -101,14 +101,16 @@ def redact(text):
     return re.sub(r"(?<!\w)\+?\d[\d ()-]{6,}\d(?!\w)", lambda m: "█" * len(m[0]), text)
 
 
-def chunks(sources, max_chars=24000, size=2400, overlap=200):
+def chunks(sources, max_chars=24000, size=2400, overlap=200, max_chunks=None):
     """Stable bounded overlapping spans, no truncation disguised as full coverage."""
     result, covered, used = [], {}, 0
     for key, text in sorted(sources.items()):
         permitted = redact(text)
         for start in range(0, len(text), size - overlap):
             part = text[start : start + size]
-            if used + len(part) > max_chars:
+            if used + len(part) > max_chars or (
+                max_chunks is not None and len(result) >= max_chunks
+            ):
                 break
             result.append(
                 {"source_id": key, "start": start, "text": permitted[start : start + size]}
@@ -147,7 +149,7 @@ def messages(operation, instruction, sources, metrics=None):
     ]
 
 
-def estimate(settings, prompt):
+def estimate_details(settings, prompt):
     # UTF-8 byte upper bound plus conservative protocol/role overhead, not chars/4.
     tokens = len(json.dumps(prompt, ensure_ascii=False).encode()) + 512
     if tokens + settings.llm_max_output_tokens > settings.llm_context_limit:
@@ -156,11 +158,22 @@ def estimate(settings, prompt):
         Decimal(tokens) * settings.llm_input_price_per_million
         + Decimal(settings.llm_max_output_tokens) * settings.llm_output_price_per_million
     ) / Decimal(1000000) + settings.llm_other_charge_reserve
-    return amount.quantize(Decimal("0.00000001"), rounding=ROUND_UP)
+    return {
+        "input_tokens_upper_bound": tokens,
+        "max_output_tokens": settings.llm_max_output_tokens,
+        "context_limit": settings.llm_context_limit,
+        "reserved_cost": str(amount.quantize(Decimal("0.00000001"), rounding=ROUND_UP)),
+        "currency": settings.llm_currency,
+        "other_charge_reserve": str(settings.llm_other_charge_reserve),
+    }
 
 
-def validate_output(content, sources, coverage, require_evidence=True):
-    if not isinstance(content, str) or len(content.encode()) > 100000:
+def estimate(settings, prompt):
+    return Decimal(estimate_details(settings, prompt)["reserved_cost"])
+
+
+def validate_output(content, sources, coverage, require_evidence=True, max_output_bytes=100000):
+    if not isinstance(content, str) or len(content.encode()) > max_output_bytes:
         raise ValueError("invalid_output")
     draft = Draft.model_validate_json(content)
     evidence = []

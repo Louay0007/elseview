@@ -19,6 +19,15 @@ class Settings(BaseSettings):
 
     app_env: Literal["development", "test", "production"] = "development"
     ai_mode: Literal["disabled", "mock", "live"] = "mock"
+    mail_mode: Literal["local", "disabled", "smtp"] = "local"
+    smtp_host: str = Field(default="", max_length=253)
+    smtp_port: int = Field(default=465, ge=1, le=65535)
+    smtp_tls: Literal["implicit", "starttls"] = "implicit"
+    smtp_username: SecretStr = SecretStr("")
+    smtp_password: SecretStr = SecretStr("")
+    smtp_sender: str = Field(default="", max_length=254)
+    smtp_timeout_seconds: float = Field(default=5, gt=0, le=15)
+    smtp_delivery_approved: bool = False
     collaboration_integration_mode: Literal["disabled", "mock", "live"] = "disabled"
     collaboration_webhook_destinations: list[str] = []
     collaboration_webhook_secret: SecretStr = SecretStr("")
@@ -115,6 +124,32 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def policy(self) -> "Settings":
+        if self.mail_mode == "smtp":
+            import re
+            from email.errors import HeaderParseError
+            from email.headerregistry import Address
+
+            try:
+                sender = Address(addr_spec=self.smtp_sender)
+                valid_sender = (
+                    sender.addr_spec == self.smtp_sender
+                    and bool(sender.username)
+                    and "." in sender.domain
+                    and self.smtp_sender.isascii()
+                )
+            except (ValueError, HeaderParseError):
+                valid_sender = False
+            if not (
+                self.smtp_delivery_approved
+                and self.app_env == "production"
+                and re.fullmatch(r"[a-zA-Z0-9](?:[a-zA-Z0-9.-]*[a-zA-Z0-9])?", self.smtp_host)
+                and valid_sender
+                and self.smtp_username.get_secret_value()
+                and self.smtp_password.get_secret_value()
+            ):
+                raise ValueError(
+                    "SMTP requires production mode, approved delivery, a host, sender and credentials"
+                )
         if self.collaboration_integration_mode != "disabled" and (
             not self.collaboration_webhook_destinations
             or len(self.collaboration_webhook_secret.get_secret_value()) < 32
@@ -204,6 +239,8 @@ class Settings(BaseSettings):
 def load_settings() -> Settings:
     """Ignore unrelated OS variables; reject misspelled application-owned settings."""
     owned = (
+        "MAIL_",
+        "SMTP_",
         "COLLABORATION_",
         "APP_",
         "AUTH_",

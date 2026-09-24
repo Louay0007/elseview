@@ -7,6 +7,7 @@ Delivery is manual in development. Reward values are development commitments, no
 import hashlib
 import hmac
 import json
+from copy import deepcopy
 from datetime import timedelta
 
 from sqlalchemy import delete, func, select
@@ -31,7 +32,7 @@ from app.recruiting.models import (
     ReservationCell,
     ScreenerResult,
 )
-from app.recruiting.schemas import Attributes
+from app.recruiting.schemas import Attributes, Experience
 from app.studies.models import Launch, Study, StudyVersion
 from app.studies.service import authorize
 
@@ -39,6 +40,84 @@ PANEL_DOCUMENT = (
     "Elseview development panel opt-in v1: optional research invitations; withdraw at any time."
 )
 PANEL_DIGEST = hashlib.sha256(PANEL_DOCUMENT.encode()).hexdigest()
+PANEL_TARGETING_DOCUMENT = (
+    "Elseview development panel opt-in v2: optional research invitations and matching using "
+    "the age, devices and languages you provide, plus optional country/city identifiers and "
+    "self-reported experience categories/levels. Missing values remain unknown. Experience "
+    "does not verify professional credentials. These attributes may be frozen for study "
+    "recruitment and quota allocation. Withdraw panel participation at any time. "
+    "Private workspace contacts are not merged into this public panel."
+)
+PANEL_TARGETING_DIGEST = hashlib.sha256(PANEL_TARGETING_DOCUMENT.encode()).hexdigest()
+PRIVATE_TARGETING_DOCUMENT = (
+    "Private panel targeting v1: I confirm that the referenced workspace private-panel "
+    "consent document and the contacts' permission explicitly cover optional country/city "
+    "identifiers and self-reported experience for research invitation matching, screeners "
+    "and quota allocation, including frozen candidate snapshots during the declared "
+    "retention period. Missing values remain unknown. Experience is not a verified "
+    "credential. No merging with public profiles or other workspaces is authorized."
+)
+PRIVATE_TARGETING_DIGEST = hashlib.sha256(PRIVATE_TARGETING_DOCUMENT.encode()).hexdigest()
+TARGETING_FIELDS = ("country_id", "city_id", "experience")
+
+
+def has_targeting(attributes):
+    return any(attributes.get(key) is not None for key in TARGETING_FIELDS)
+
+
+def panel_request_digest(body):
+    payload = body.model_dump()
+    # Preserve historical v1 receipt digests after adding optional schema defaults.
+    if body.document_version == "1" and not has_targeting(payload["attributes"]):
+        for key in TARGETING_FIELDS:
+            payload["attributes"].pop(key, None)
+    return digest(payload)
+
+
+def profile_output(profile):
+    attributes = deepcopy(profile.attributes_json)
+    provenance = attributes.pop("_targeting_provenance", None)
+    return {
+        "id": str(profile.id),
+        "status": profile.status,
+        "attributes": attributes,
+        "targeting_provenance": provenance,
+    }
+
+
+def targeting_provenance(source, purpose, consent, **details):
+    return {
+        "version": "1",
+        "source": source,
+        "purpose": purpose,
+        "recorded_at": utcnow().isoformat(),
+        "consent": consent,
+        **details,
+    }
+
+
+def parse_import_attributes(row, mapping):
+    """Shared by preview/import; experience cells contain bounded, versioned JSON."""
+    attrs = {}
+    try:
+        for key, column in mapping.items():
+            if key == "email" or not row.get(column, "").strip():
+                continue
+            value = row[column].strip()
+            if key == "age":
+                attrs[key] = int(value)
+            elif key in ("devices", "languages"):
+                attrs[key] = [x.strip() for x in value.split(",")]
+            elif key == "experience":
+                # Bound parser input before decoding externally supplied CSV cells.
+                if len(value) > 2048:
+                    raise ValueError("experience cell too large")
+                attrs[key] = json.loads(value)
+            else:
+                attrs[key] = value
+        return Attributes.model_validate(attrs).model_dump()
+    except (ValueError, TypeError, RecursionError):
+        fail("INVALID_ATTRIBUTES", 422)
 
 
 def fail(code="NOT_FOUND", status=404):
@@ -65,12 +144,30 @@ def matches(attributes, filters):
         "verified_languages", []
     ):
         return False
+    for key in ("country_id", "city_id"):
+        if filters.get(key) is not None and attributes.get(key) != filters[key]:
+            return False
+    if filters.get("experience") is not None:
+        try:
+            wanted = Experience.model_validate(filters["experience"])
+            actual = Experience.model_validate(attributes.get("experience"))
+        except (ValueError, TypeError):
+            return False
+        if wanted.version != actual.version or any(
+            actual.categories.get(category) != level
+            for category, level in wanted.categories.items()
+        ):
+            return False
     return True
 
 
 def panel_update(session, user_id, body):
-    if body.presented_digest != PANEL_DIGEST or body.document_version != "1":
+    expected_digest = {"1": PANEL_DIGEST, "2": PANEL_TARGETING_DIGEST}[body.document_version]
+    if body.presented_digest != expected_digest:
         fail("CONSENT_DOCUMENT_MISMATCH", 409)
+    attributes = body.attributes.model_dump()
+    if body.decision == "granted" and has_targeting(attributes) and body.document_version != "2":
+        fail("TARGETING_CONSENT_REQUIRED", 422)
     session.scalar(select(User).where(User.id == user_id).with_for_update())
     profile = session.scalar(
         select(ParticipantProfile).where(ParticipantProfile.user_id == user_id)
@@ -87,18 +184,28 @@ def panel_update(session, user_id, body):
         )
     )
     if previous:
-        if previous.request_digest != digest(body.model_dump()):
+        if previous.request_digest != panel_request_digest(body):
             fail("IDEMPOTENCY_CONFLICT", 409)
         return profile
     profile.status = "active" if body.decision == "granted" else "withdrawn"
-    profile.attributes_json = body.attributes.model_dump() if body.decision == "granted" else {}
+    if body.decision == "granted" and has_targeting(attributes):
+        attributes["_targeting_provenance"] = targeting_provenance(
+            "self_reported",
+            "public_panel_targeting",
+            {
+                "version": body.document_version,
+                "document_digest": expected_digest,
+                "receipt_key": body.receipt_key,
+            },
+        )
+    profile.attributes_json = attributes if body.decision == "granted" else {}
     session.add(
         PanelConsent(
             profile_id=profile.id,
             decision=body.decision,
-            document_version="1",
-            document_digest=PANEL_DIGEST,
-            request_digest=digest(body.model_dump()),
+            document_version=body.document_version,
+            document_digest=expected_digest,
+            request_digest=panel_request_digest(body),
             receipt_key=body.receipt_key,
         )
     )
@@ -128,8 +235,15 @@ def import_contacts(session, settings, workspace_id, user_id, body):
         fail("CONSENT_PURPOSE", 422)
     if body.retention_until.tzinfo is None or body.retention_until <= utcnow():
         fail("INVALID_RETENTION", 422)
-    if set(body.mapping) - {"email", "age", "devices", "languages"} or "email" not in body.mapping:
+    allowed = {"email", "age", "devices", "languages", *TARGETING_FIELDS}
+    if set(body.mapping) - allowed or "email" not in body.mapping:
         fail("INVALID_MAPPING", 422)
+    targeting_consent = body.targeting_consent
+    if targeting_consent and (
+        targeting_consent.presented_digest != PRIVATE_TARGETING_DIGEST
+        or targeting_consent.document_digest != doc.digest
+    ):
+        fail("CONSENT_DOCUMENT_MISMATCH", 409)
     planned = []
     seen = set()
     duplicates = 0
@@ -139,19 +253,18 @@ def import_contacts(session, settings, workspace_id, user_id, body):
         hashed = contact_hash(
             settings.secret_key.get_secret_value(), workspace_id, row[body.mapping["email"]]
         )
-        attrs = {}
-        try:
-            for key, column in body.mapping.items():
-                if key == "email" or not row.get(column):
-                    continue
-                attrs[key] = (
-                    int(row[column])
-                    if key == "age"
-                    else [x.strip() for x in row[column].split(",")]
-                )
-            attrs = Attributes.model_validate(attrs).model_dump()
-        except (ValueError, TypeError):
-            fail("INVALID_ATTRIBUTES", 422)
+        attrs = parse_import_attributes(row, body.mapping)
+        if has_targeting(attrs):
+            if targeting_consent is None:
+                fail("TARGETING_CONSENT_REQUIRED", 422)
+            attrs["_targeting_provenance"] = targeting_provenance(
+                "workspace_import",
+                "private_panel_targeting",
+                targeting_consent.model_dump() | {"document_id": str(doc.id)},
+                workspace_id=str(workspace_id),
+                imported_by=str(user_id),
+                import_source=body.source,
+            )
         existing = session.scalar(
             select(PrivateContact.id).where(
                 PrivateContact.workspace_id == workspace_id,
@@ -192,6 +305,13 @@ def import_contacts(session, settings, workspace_id, user_id, body):
         "accepted": len(planned),
         "duplicates": duplicates,
         "contact_ids": ids,
+        "targeting_summary": {
+            key: {
+                "known": sum(attrs.get(key) is not None for _, attrs in planned),
+                "unknown": sum(attrs.get(key) is None for _, attrs in planned),
+            }
+            for key in TARGETING_FIELDS
+        },
         "delivery": "manual_capability_only",
     }
 
@@ -300,7 +420,7 @@ def source_attributes(session, workspace_id, kind, source_id):
         )
         if not receipt or receipt.decision != "granted":
             fail("SOURCE_UNAVAILABLE", 409)
-        attrs = dict(profile.attributes_json)
+        attrs = deepcopy(profile.attributes_json)
         attrs["verified_languages"] = list(
             session.scalars(
                 select(Qualification.language).where(
@@ -330,7 +450,7 @@ def source_attributes(session, workspace_id, kind, source_id):
         or receipt.decision != "granted"
     ):
         fail("SOURCE_UNAVAILABLE", 409)
-    return dict(contact.attributes_json), None
+    return deepcopy(contact.attributes_json), None
 
 
 def issue_invitation(session, workspace_id, user_id, launch_id, body):
@@ -365,7 +485,7 @@ def issue_invitation(session, workspace_id, user_id, launch_id, body):
         subject_id=subject,
         source_kind=body.source_kind,
         source_id=body.source_id,
-        attributes_json=attrs,
+        attributes_json=deepcopy(attrs),
         status="invited" if config.screener_json else "eligible",
     )
     session.add(candidate)

@@ -2,6 +2,8 @@
 
 **Brand:** Elseview — See what you’re missing.
 
+**Remaining delivery work:** [Completion and release plan](BACKEND_COMPLETION_PLAN.md) maps the outstanding idea features, partial implementations, P19 acceptance gaps and external production gates into ordered C01–C13 work packages. It supplements this original plan; it does not claim those packages are implemented.
+
 **Date:** September 23, 2026.  
 **Status:** P01–P18 have development implementations and executed evidence. P19 has integrated automated acceptance and a ten-story test map, but unresolved combined browser/live-provider/production gates prevent unconditional final sign-off. See `/Users/user/Workspace/startup-act/docs/backend/IMPLEMENTATION_STATUS.md` and `/Users/user/Workspace/startup-act/docs/backend/P18_P19_ACCEPTANCE.md`. Commercial activation requires reviewed invoice/payment rules; live-provider/dialect evaluation, external transcription/sandbox connectors, production backup encryption and full browser accessibility/interaction validation remain external or disabled gates. Backend tests do not certify them. Checklists below describe acceptance criteria, not automatic evidence that every gate passed.
 

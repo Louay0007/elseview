@@ -118,6 +118,8 @@ class RecruitmentConfig(Scoped, Base):
 
 
 class Candidate(Scoped, Base):
+    """JSON attributes/provenance are copied at invitation time, never refreshed from source."""
+
     __tablename__ = "candidates"
     launch_id: Mapped[UUID]
     subject_id: Mapped[UUID | None] = mapped_column(ForeignKey("users.id"))

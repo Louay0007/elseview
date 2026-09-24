@@ -35,11 +35,11 @@ def test_cancel_during_authorization_releases_late_transferred_lease(monkeypatch
     def begin():
         yield object()
 
-    def prepare(session, settings, job, dispatch=True):
+    def prepare(session, settings, job, dispatch=True, *, include_settings=False):
         if dispatch:
             entered.set()
             assert finish.wait(3)
-        return [], {}, {}
+        return ([], {}, {}, settings) if include_settings else ([], {}, {})
 
     monkeypatch.setattr(service, "prepare", prepare)
     monkeypatch.setattr(dispatch_gate, "transfer", lambda *args: lease)
@@ -178,9 +178,7 @@ def test_actual_cancel_after_prepare_never_calls_provider(
 
 
 @pytest.mark.unit
-def test_real_http_transport_releases_gate_before_response():
-    import tempfile
-
+def test_real_http_transport_releases_gate_before_response(tmp_path):
     import httpx2
 
     from app.ai import adapter
@@ -204,8 +202,7 @@ def test_real_http_transport_releases_gate_before_response():
             writer.close()
             await writer.wait_closed()
 
-        directory = tempfile.TemporaryDirectory(dir="/tmp", prefix="ai-")
-        socket_path = directory.name + "/provider.sock"
+        socket_path = str(tmp_path / "provider.sock")
         listener = await asyncio.start_unix_server(server, socket_path)
         bucket = _Bucket()
         bucket.lock.acquire()
@@ -234,7 +231,7 @@ def test_real_http_transport_releases_gate_before_response():
             adapter.dispatch_lease.reset(token)
             listener.close()
             await listener.wait_closed()
-            directory.cleanup()
+            (tmp_path / "provider.sock").unlink(missing_ok=True)
 
     asyncio.run(scenario())
 
@@ -277,7 +274,7 @@ def test_change_after_prepare_prevents_provider_call(monkeypatch, settings, reas
     def begin():
         yield object()
 
-    def prepare(session, settings, job, dispatch=True):
+    def prepare(session, settings, job, dispatch=True, *, include_settings=False):
         if not dispatch:
             prepared.set()
             assert changed.wait(3)

@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Literal, get_args
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, Request
@@ -17,7 +17,10 @@ from app.recruiting.models import (
     Qualification,
 )
 from app.recruiting.schemas import (
+    COUNTRY_IDS,
     ConfigBody,
+    ExperienceCategory,
+    ExperienceLevel,
     Filters,
     ImportBody,
     InviteBody,
@@ -34,8 +37,36 @@ ROOT = "/workspaces/{workspace_id}/recruiting"
 
 
 @router.get("/panel/consent")
-def panel_document():
+def panel_document(version: Literal["1", "2"] = "1"):
+    if version == "2":
+        return {
+            "version": "2",
+            "body": service.PANEL_TARGETING_DOCUMENT,
+            "digest": service.PANEL_TARGETING_DIGEST,
+        }
     return {"version": "1", "body": service.PANEL_DOCUMENT, "digest": service.PANEL_DIGEST}
+
+
+@router.get("/recruiting/targeting-vocabulary")
+def targeting_vocabulary():
+    return {
+        "version": "1",
+        "country_ids": sorted(COUNTRY_IDS),
+        "city_id_format": "geonames:<positive decimal ID, at most 10 digits>",
+        "city_country_association": "self_reported_not_verified",
+        "experience_categories": list(get_args(ExperienceCategory)),
+        "experience_levels": list(get_args(ExperienceLevel)),
+        "experience_scope": "self_reported_not_verified_credentials",
+        "matching": "exact_values_all_requested_categories_and_filters",
+        "unknown_behavior": "missing_or_null_excluded_only_when_that_attribute_is_filtered",
+        "private_targeting_consent": {
+            "version": "1",
+            "purpose": "private_panel_targeting",
+            "body": service.PRIVATE_TARGETING_DOCUMENT,
+            "digest": service.PRIVATE_TARGETING_DIGEST,
+        },
+        "public_targeting_consent_version": "2",
+    }
 
 
 @router.put("/panel/profile")
@@ -43,11 +74,7 @@ def panel_profile(body: PanelBody, request: Request, user: Actor):
     rate_limit(request, "panel", str(user.id), 30)
     with request.app.state.database.sessions.begin() as session:
         profile = service.panel_update(session, user.id, body)
-        return {
-            "id": str(profile.id),
-            "status": profile.status,
-            "attributes": profile.attributes_json,
-        }
+        return service.profile_output(profile)
 
 
 @router.get("/panel/profile")
@@ -58,11 +85,7 @@ def get_profile(request: Request, user: Actor):
         )
         if not profile:
             service.fail()
-        return {
-            "id": str(profile.id),
-            "status": profile.status,
-            "attributes": profile.attributes_json,
-        }
+        return service.profile_output(profile)
 
 
 @router.post(ROOT + "/contacts/import")

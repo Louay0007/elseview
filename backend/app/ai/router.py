@@ -11,7 +11,7 @@ from app.studies.service import authorize
 
 from . import service
 from .models import AIRun
-from .schemas import ReconcileBody, RunBody
+from .schemas import EstimateBody, ReconcileBody, RunBody
 
 router = APIRouter(prefix="/api/v1/workspaces/{workspace_id}/ai", tags=["ai"])
 Actor = Annotated[User, Depends(current_user)]
@@ -20,6 +20,15 @@ Actor = Annotated[User, Depends(current_user)]
 def guard(request, response, user):
     response.headers["Cache-Control"] = "no-store"
     rate_limit(request, "ai", str(user.id), 30)
+
+
+@router.post("/estimate")
+def estimate(
+    workspace_id: UUID, body: EstimateBody, request: Request, response: Response, user: Actor
+):
+    guard(request, response, user)
+    with request.app.state.database.sessions.begin() as session:
+        return service.estimate(session, request.app.state.settings, workspace_id, user.id, body)
 
 
 @router.post("/runs", status_code=202)

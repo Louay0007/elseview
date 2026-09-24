@@ -2,6 +2,14 @@
 
 **Brand:** Elseview — See what you’re missing.
 
+## Completion-plan increment — partial development
+
+Current uncommitted implementation adds opt-in TLS SMTP transport (not durable notifications), explicit success schemas for eight auth endpoints, consented country/city/experience recruitment targeting, and bounded versioned single-call AI depth/estimation. The checked API contract now contains **174 paths**. Defaults retain private development email and mocked AI; no migration or dependency addition is required by these increments.
+
+Current executable evidence: **627 non-database backend tests passed; 402 marked tests deselected**. Frontend **11 Node tests passed** and production build passed. A first broad run failed one pre-existing Unix-socket test because macOS's default temporary path was too long; rerunning in a fresh short project-local directory passed without changing that test's assertions. Six added recruitment DB regressions have not been executed. No database reset, live email/AI call, integration activation, payment, deployment, commit or push occurred.
+
+These results do **not** refresh the older full-database, load or coverage evidence. SMTP remains synchronous after commit with no durable retry/reconciliation and possible eligibility timing differences; qualifications/history, multi-call AI, exports, methods/media, integrations and full-product acceptance remain unfinished. See [the completion plan](../../BACKEND_COMPLETION_PLAN.md#current-implementation-checkpoint--partial-not-acceptance) for package-level status and [README](../../README.md) for gated SMTP configuration. C01–C13 are not claimed complete.
+
 ## Audit remediation — September 24, 2026
 
 The nine reported defects are corrected: scoped restore replay, bidirectional
