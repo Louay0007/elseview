@@ -3,14 +3,13 @@ import socket
 from pathlib import Path
 
 import pytest
-from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 
 from app.config import Settings
 from app.main import create_app
-from app.test_runner import validate_test_database
+from app.test_runner import prepare_database, validate_test_database
 
 
 @pytest.fixture
@@ -86,8 +85,7 @@ def migrated_database():
     previous = os.environ.get("MIGRATION_DATABASE_URL")
     os.environ["MIGRATION_DATABASE_URL"] = url
     config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
-    command.downgrade(config, "base")
-    command.upgrade(config, "head")
+    prepare_database(config, url, os.environ.get("TEST_DATABASE_MODE", "reset"))
     yield url
     if previous is None:
         os.environ.pop("MIGRATION_DATABASE_URL", None)
@@ -100,6 +98,45 @@ def db_engine(migrated_database):
     engine = create_engine(migrated_database, hide_parameters=True)
     yield engine
     engine.dispose()
+
+
+@pytest.fixture
+def migration_engine(migrated_database, monkeypatch):
+    """Round-trip migrations only in a new empty database, never accumulated test data."""
+    from uuid import uuid4
+
+    from sqlalchemy.engine import make_url
+    from sqlalchemy.pool import NullPool
+
+    name = "migration_" + uuid4().hex + "_test"
+    url = make_url(migrated_database)
+    admin = create_engine(
+        url.set(database="postgres"),
+        isolation_level="AUTOCOMMIT",
+        poolclass=NullPool,
+        hide_parameters=True,
+    )
+    engine = None
+    created = False
+    try:
+        with admin.connect() as connection:
+            connection.exec_driver_sql(f'CREATE DATABASE "{name}" TEMPLATE template0')
+        created = True
+        isolated_url = url.set(database=name).render_as_string(hide_password=False)
+        monkeypatch.setenv("MIGRATION_DATABASE_URL", isolated_url)
+        config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
+        prepare_database(config, isolated_url, "fresh")
+        engine = create_engine(isolated_url, poolclass=NullPool, hide_parameters=True)
+        yield engine
+    finally:
+        if engine is not None:
+            engine.dispose()
+        try:
+            if created:
+                with admin.connect() as connection:
+                    connection.exec_driver_sql(f'DROP DATABASE "{name}"')
+        finally:
+            admin.dispose()
 
 
 @pytest.fixture

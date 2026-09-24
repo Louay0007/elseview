@@ -51,10 +51,17 @@ export function EvaluationForm({ assignment: a, request, onSaved }) {
   </form>;
 }
 
-export default function EvaluationRunner({ workspaceId, token, assignmentId }) {
-  const [a, setA] = useState(null), [error, setError] = useState('');
-  const request = React.useCallback((path = '', options = {}) => authenticatedRequest(`/api/v1/workspaces/${encodeURIComponent(workspaceId)}/evaluation/assignments/${encodeURIComponent(assignmentId)}`, token, path, options), [workspaceId, token, assignmentId]);
-  const load = () => request().then(r => r.json()).then(setA).catch(() => setError('Assignment unavailable. Check your authorization.'));
-  useEffect(() => { load(); }, [request]);
-  return <main className="study-preview"><h1>Human evaluation</h1><p role="alert">{error}</p><button onClick={load}>Reload assignment state</button>{a && <EvaluationForm key={a.id + Boolean(a.outcome)} assignment={a} request={request} onSaved={load} />}</main>;
+export default function EvaluationRunner({ workspaceId, token, assignmentId, request: injectedRequest }) {
+  const [a, setA] = useState(null), [error, setError] = useState(''), [busy, setBusy] = useState(false);
+  const generation = useRef(0);
+  const api = React.useCallback((path = '', options = {}) => authenticatedRequest(`/api/v1/workspaces/${encodeURIComponent(workspaceId)}/evaluation/assignments/${encodeURIComponent(assignmentId)}`, token, path, options), [workspaceId, token, assignmentId]);
+  const request = injectedRequest || api;
+  const load = React.useCallback(async () => {
+    const current = ++generation.current; setBusy(true); setError('');
+    try { const response = await request(); const data = await response.json(); if (current === generation.current) setA(data); }
+    catch (failure) { if (current === generation.current) { if ([401, 403, 404].includes(failure.status)) setA(null); setError('Assignment unavailable. Check your authorization or reload to reconcile the server record.'); } }
+    finally { if (current === generation.current) setBusy(false); }
+  }, [request]);
+  useEffect(() => { load(); return () => { generation.current++; }; }, [load]);
+  return <main className="study-preview"><h1>Human evaluation</h1><p role="alert">{error}</p><p role="status">{busy ? 'Loading assignment…' : ''}</p><button disabled={busy} onClick={load}>Reload assignment state</button>{a && <EvaluationForm key={a.id + Boolean(a.outcome)} assignment={a} request={request} onSaved={load} />}</main>;
 }

@@ -126,6 +126,8 @@ def authorize(session, session_id, capability, *, allow_withdrawn=False):
         .with_for_update()
         .execution_options(populate_existing=True)
     )
+    if not row or not hmac.compare_digest(row.capability_hash, digest(capability)):
+        fail("INVALID_CAPABILITY", "Session capability is invalid.", 404)
     if row.expires_at <= utcnow() or (row.state in {"withdrawn", "erased"} and not allow_withdrawn):
         fail("CAPABILITY_EXPIRED", "This session is no longer available.", 403)
     if not allow_withdrawn:
@@ -217,10 +219,13 @@ def project(row, block, attempt=None):
     if "endpoint_labels" in config:
         config["endpoint_labels"] = {k: v[row.locale] for k, v in config["endpoint_labels"].items()}
     if block.type == "five_second":
-        # Stimulus appears once, only in the explicit attempt-start receipt.
         config.pop("asset_ref", None)
         result["attempt_id"] = str(attempt.id) if attempt else None
         result["attempt_state"] = attempt.state if attempt else "not_started"
+        result["exposure_protocol_versions"] = [1, 2]
+        result["attempt_protocol_version"] = attempt.protocol_version if attempt else None
+        result["visible_ms"] = attempt.visible_ms if attempt else None
+        result["timing_provenance"] = "client_observed_not_physically_verified"
     if block.type == "prototype.task":
         config["target"].pop("authorization_ref", None)
     return methods.advanced.project(result, row.locale)
@@ -240,6 +245,13 @@ def resume(session, row):
         if block
         else None
     )
+    if attempt and attempt.protocol_version == 2 and row.state == "active":
+        # Recovery cannot distinguish a lost acknowledgement from an exposure already seen.
+        if attempt.state in {"preparing", "started"}:
+            attempt.state = "interrupted"
+            attempt.ended_at = utcnow()
+            attempt.visible_ms = None
+            session.flush()
     projected = project(row, block, attempt) if block and row.state == "active" else None
     if projected and block.type == "accessibility.issue":
         projected["context_consent_granted"] = consent_granted(
@@ -255,6 +267,7 @@ def resume(session, row):
     return {
         "session_id": str(row.id),
         "occurrence_id": str(row.diary_occurrence_id) if row.diary_occurrence_id else None,
+        "locale": row.locale,
         "version_id": str(row.version_id),
         "state": row.state,
         "revision": row.revision,
@@ -353,7 +366,11 @@ def save_answer(session, row, block_key, body):
             if latched and payload["status"] != "responded":
                 raise ValueError("Recorded first click cannot be discarded")
         if block.type == "five_second" and payload["status"] == "responded":
-            if not attempt or attempt.state == "started":
+            if (
+                not attempt
+                or attempt.state not in {"completed", "interrupted"}
+                or attempt.visible_ms is None
+            ):
                 raise ValueError("Exposure must finish first")
             value = payload["value"]
             if value["visible_ms"] != attempt.visible_ms or value["interrupted"] != (
@@ -362,6 +379,15 @@ def save_answer(session, row, block_key, body):
                 raise ValueError("Exposure timing does not match")
     except (ValueError, TypeError):
         fail("INVALID_ANSWER", "Answer does not match the block contract.", 422)
+    if (
+        block.type == "five_second"
+        and payload["status"] != "responded"
+        and attempt
+        and attempt.state in {"preparing", "started"}
+    ):
+        attempt.state = "interrupted"
+        attempt.ended_at = utcnow()
+        attempt.visible_ms = None
     if answer is None:
         answer = Answer(session_id=row.id, block_key=block_key, current_revision=0)
         session.add(answer)
@@ -437,7 +463,9 @@ def start_attempt(session, row, block_key):
             "replay": True,
             "asset_ref": None,
         }
-    attempt = InteractionAttempt(session_id=row.id, block_key=key)
+    attempt = InteractionAttempt(
+        session_id=row.id, block_key=key, started_at=utcnow(), protocol_version=1
+    )
     session.add(attempt)
     session.flush()
     return {
@@ -447,6 +475,111 @@ def start_attempt(session, row, block_key):
         "asset_ref": block.config.asset_ref.model_dump(mode="json"),
         "exposure_ms": 5000,
     }
+
+
+def prepare_exposure(session, row, block_key, body):
+    require_active(row, body.version_id)
+    _, blocks = definition(session, row)
+    current = current_answers(session, row)
+    _, key = path(blocks, {k: v[1].payload for k, v in current.items()})
+    block = next((b for b in blocks if b.block_key == block_key), None)
+    if key != block_key or not block or block.type != "five_second":
+        fail("INVALID_ATTEMPT", "Only the current timed block can be prepared.")
+    attempt = session.scalar(
+        select(InteractionAttempt).where(
+            InteractionAttempt.session_id == row.id, InteractionAttempt.block_key == block_key
+        )
+    )
+    replay = attempt is not None
+    if attempt:
+        if attempt.protocol_version != 2 or not hmac.compare_digest(
+            attempt.preparation_hash or "", digest(body.capability)
+        ):
+            fail("ATTEMPT_FINAL", "This exposure already has an attempt. Resume to recover.")
+    else:
+        now = utcnow()
+        attempt = InteractionAttempt(
+            session_id=row.id,
+            block_key=block_key,
+            state="preparing",
+            protocol_version=2,
+            prepared_at=now,
+            preparation_expires_at=now + timedelta(seconds=30),
+            preparation_hash=digest(body.capability),
+        )
+        session.add(attempt)
+        session.flush()
+    available = (
+        attempt.state == "preparing"
+        and attempt.asset_claimed_at is None
+        and utcnow() < attempt.preparation_expires_at
+    )
+    return {
+        "protocol_version": 2,
+        "attempt_id": str(attempt.id),
+        "state": attempt.state,
+        "replay": replay,
+        "asset_ref": block.config.asset_ref.model_dump(mode="json") if available else None,
+        "preparation_expires_at": attempt.preparation_expires_at.isoformat(),
+        "preparation_timeout_ms": 30000,
+        "exposure_ms": 5000,
+    }
+
+
+def begin_exposure(session, row, block_key, body):
+    require_active(row, body.version_id)
+    attempt = session.scalar(
+        select(InteractionAttempt).where(
+            InteractionAttempt.session_id == row.id, InteractionAttempt.block_key == block_key
+        )
+    )
+    if (
+        not attempt
+        or attempt.id != body.attempt_id
+        or attempt.protocol_version != 2
+        or not hmac.compare_digest(attempt.preparation_hash or "", digest(body.capability))
+    ):
+        fail("INVALID_ATTEMPT", "Preparation does not match this attempt.")
+    _, blocks = definition(session, row)
+    _, current = path(blocks, {k: v[1].payload for k, v in current_answers(session, row).items()})
+    if current != block_key:
+        fail("UNREACHABLE_BLOCK", "Only the current block may be exposed.")
+    replay = attempt.state != "preparing"
+    if not replay:
+        if utcnow() >= attempt.preparation_expires_at or attempt.asset_claimed_at is None:
+            fail(
+                "PREPARATION_EXPIRED",
+                "Preparation expired or the image was not loaded. Record inability or resume.",
+            )
+        attempt.state = "started"
+        attempt.started_at = utcnow()
+        session.flush()
+    return {
+        "protocol_version": 2,
+        "attempt_id": str(attempt.id),
+        "state": attempt.state,
+        "replay": replay,
+        "exposure_ms": 5000,
+    }
+
+
+def exposure_asset_allowed(attempt, capability=None, now=None):
+    now = now or utcnow()
+    if not attempt:
+        return False
+    if attempt.protocol_version == 2:
+        return bool(
+            attempt.state == "preparing"
+            and attempt.asset_claimed_at is None
+            and now < attempt.preparation_expires_at
+            and capability
+            and hmac.compare_digest(attempt.preparation_hash or "", digest(capability))
+        )
+    return bool(
+        attempt.state == "started"
+        and attempt.started_at
+        and (now - attempt.started_at).total_seconds() <= 5
+    )
 
 
 def batch_events(session, row, body):
@@ -532,13 +665,32 @@ def batch_events(session, row, body):
                     or event["metadata"].get("visibility") == "hidden"
                 )
                 if interrupted or event["kind"] == "exposure.ended":
-                    if attempt.state != "started":
+                    allowed_states = (
+                        {"started", "preparing"}
+                        if interrupted and attempt.protocol_version == 2
+                        else {"started"}
+                    )
+                    if attempt.state not in allowed_states:
                         fail("ATTEMPT_FINAL", "Exposure timing is already final.")
+                    if (
+                        attempt.protocol_version == 2
+                        and not interrupted
+                        and (
+                            not 4900 <= event["elapsed_ms"] <= 5250
+                            or not 4.9 <= (utcnow() - attempt.started_at).total_seconds() <= 30
+                        )
+                    ):
+                        fail(
+                            "INVALID_EXPOSURE_TIME",
+                            "Exposure timing is outside the collection window.",
+                            422,
+                        )
                     attempt.visible_ms = event["elapsed_ms"]
                     attempt.state = "interrupted" if interrupted else "completed"
                     attempt.ended_at = utcnow()
-            elif event["kind"] == "exposure.started" and attempt.state != "started":
-                fail("ATTEMPT_FINAL", "Exposure cannot restart.")
+            elif event["kind"] == "exposure.started":
+                if attempt.state != "started" or (attempt.protocol_version == 2 and previous):
+                    fail("ATTEMPT_FINAL", "Exposure cannot restart.")
         session.add(
             ResponseEvent(
                 session_id=row.id,

@@ -36,6 +36,77 @@ def test_generated_openapi_matches_reviewed_artifact(settings):
         app.state.rate_limiter.close()
 
 
+def test_increment_success_projections_are_explicit_and_authenticated(settings):
+    app = create_app(settings)
+    try:
+        schema = app.openapi()
+        cases = [
+            (
+                "/api/v1/workspaces/{workspace_id}/analytics/reports",
+                "get",
+                "200",
+                "ReportIndexResponse",
+            ),
+            (
+                "/api/v1/workspaces/{wid}/collaboration/notification-preferences",
+                "get",
+                "200",
+                "NotificationPreferenceResponse",
+            ),
+            (
+                "/api/v1/workspaces/{wid}/collaboration/notification-preferences",
+                "put",
+                "200",
+                "NotificationPreferenceResponse",
+            ),
+            (
+                "/api/v1/workspaces/{workspace_id}/recruiting/launches/{launch_id}/invitations",
+                "post",
+                "201",
+                "RecruitmentInvitationResponse",
+            ),
+            (
+                "/api/v1/workspaces/{workspace_id}/recruiting/invitations/{invitation_id}/delivery",
+                "post",
+                "202",
+                "InvitationDeliveryResponse",
+            ),
+        ]
+        for path, method, status, name in cases:
+            operation = schema["paths"][path][method]
+            assert operation["security"] == [{"BearerAuth": []}]
+            assert operation["responses"][status]["content"]["application/json"]["schema"] == {
+                "$ref": f"#/components/schemas/{name}"
+            }
+        union = schema["components"]["schemas"]["RecruitmentInvitationResponse"]
+        assert union["discriminator"]["propertyName"] == "delivery"
+        assert set(union["discriminator"]["mapping"]) == {"manual", "queued"}
+    finally:
+        app.state.database.close()
+        app.state.cache.close()
+        app.state.rate_limiter.close()
+
+
+def test_prefixed_router_inherits_effective_path_and_authorization():
+    from fastapi import APIRouter, Depends, FastAPI
+
+    from app.auth.dependencies import current_user
+    from app.contracts import build_contract
+
+    app = FastAPI()
+    router = APIRouter()
+
+    @router.get("/visible")
+    @router.get("/hidden", include_in_schema=False)
+    def response():
+        return {"status": "ok"}
+
+    app.include_router(router, prefix="/api/v1/example", dependencies=[Depends(current_user)])
+    schema = build_contract(app)
+    assert set(schema["paths"]) == {"/api/v1/example/visible"}
+    assert schema["paths"]["/api/v1/example/visible"]["get"]["security"] == [{"BearerAuth": []}]
+
+
 def test_actual_errors_follow_documented_envelope(client):
     cases = [
         client.get("/api/v1/me"),

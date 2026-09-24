@@ -75,46 +75,21 @@ def require_workspace(session, user_id, workspace_id, capability):
     return member
 
 
-def _issue_one_time(session, user, purpose, seconds):
-    now = utcnow()
-    session.execute(
-        update(OneTimeToken)
-        .where(
-            OneTimeToken.user_id == user.id,
-            OneTimeToken.purpose == purpose,
-            OneTimeToken.used_at.is_(None),
-        )
-        .values(used_at=now)
-    )
-    raw = new_secret()
-    session.add(
-        OneTimeToken(
-            user_id=user.id,
-            purpose=purpose,
-            token_hash=token_hash(raw),
-            expires_at=now + timedelta(seconds=seconds),
-        )
-    )
-    return raw
-
-
 class AuthService:
     def __init__(self, database, settings, deliver):
         self.database, self.settings, self.deliver = database, settings, deliver
 
-    def _deliver_instructions(self, email, purpose, raw):
-        try:
-            self.deliver(email, purpose, raw)
-        except DomainError as exc:
-            if exc.code not in {"DELIVERY_UNAVAILABLE", "DELIVERY_REJECTED", "DELIVERY_UNCERTAIN"}:
-                raise
-            # Public recovery/registration responses must not reveal eligible accounts.
-            logger.warning("Auth instruction delivery did not confirm acceptance: %s", exc.code)
+    def dispatch_local(self, delivery_id):
+        from app.auth.outbox import dispatch_local
+
+        dispatch_local(self.database, self.settings, delivery_id, self.deliver)
 
     def register(self, email, password, display_name):
         # Hash in both new/duplicate cases; do not change an existing account's password.
         hashed = password_hasher.hash(password)
-        raw = None
+        from app.auth.outbox import enqueue_auth
+
+        delivery_id = None
         with self.database.sessions.begin() as session:
             uid = session.scalar(
                 insert(User)
@@ -131,13 +106,14 @@ class AuthService:
             )
             if uid:
                 user = session.get(User, uid)
-                raw = _issue_one_time(session, user, "verify", self.settings.auth_verify_seconds)
+                delivery_id = enqueue_auth(session, user, "verify", self.settings)
                 audit(session, "auth.register", user.id)
-        if raw:
-            self._deliver_instructions(email, "verify", raw)
+        self.dispatch_local(delivery_id)
 
     def request_token(self, email, purpose):
-        raw = None
+        from app.auth.outbox import enqueue_auth
+
+        delivery_id = None
         with self.database.sessions.begin() as session:
             user = session.scalar(select(User).where(User.email == email).with_for_update())
             if (
@@ -145,10 +121,9 @@ class AuthService:
                 and user.status == "active"
                 and (purpose == "reset" or user.verified_at is None)
             ):
-                raw = _issue_one_time(session, user, purpose, self.settings.auth_verify_seconds)
+                delivery_id = enqueue_auth(session, user, purpose, self.settings)
                 audit(session, f"auth.{purpose}_requested", user.id)
-        if raw:
-            self._deliver_instructions(email, purpose, raw)
+        self.dispatch_local(delivery_id)
 
     def consume_token(self, raw, purpose, new_password=None):
         hashed = password_hasher.hash(new_password) if new_password is not None else None
@@ -169,7 +144,18 @@ class AuthService:
                 or user.status != "active"
             ):
                 raise DomainError("INVALID_TOKEN", "Token is invalid or expired.", 400)
-            token.used_at = now
+            from app.auth.outbox import cancel_tokens
+
+            session.execute(
+                update(OneTimeToken)
+                .where(
+                    OneTimeToken.user_id == user.id,
+                    OneTimeToken.purpose == purpose,
+                    OneTimeToken.used_at.is_(None),
+                )
+                .values(used_at=now)
+            )
+            cancel_tokens(session, user.id, purpose)
             if purpose == "verify":
                 user.verified_at = now
             else:
@@ -179,15 +165,6 @@ class AuthService:
                     update(RefreshToken)
                     .where(RefreshToken.user_id == user.id)
                     .values(revoked_at=now)
-                )
-                session.execute(
-                    update(OneTimeToken)
-                    .where(
-                        OneTimeToken.user_id == user.id,
-                        OneTimeToken.purpose == "reset",
-                        OneTimeToken.used_at.is_(None),
-                    )
-                    .values(used_at=now)
                 )
             audit(session, f"auth.{purpose}_completed", user.id)
 
@@ -330,35 +307,55 @@ def change_member(session, actor_id, workspace_id, member_id, role=None):
     return target
 
 
-def invite_member(session, actor_id, workspace_id, email, role):
-    session.scalar(select(Workspace).where(Workspace.id == workspace_id).with_for_update())
+def invite_member(session, actor_id, workspace_id, email, role, settings):
+    from app.auth.outbox import cancel_invites, capability, enqueue
+    from app.common.privacy import lock_workspace, require_unrestricted
+
+    lock_workspace(session, workspace_id)
     actor = require_workspace(session, actor_id, workspace_id, "members.manage")
+    require_unrestricted(session, workspace_id, actor_id)
+    recipient = session.scalar(select(User).where(User.email == email))
+    if recipient is not None:
+        require_unrestricted(session, workspace_id, recipient.id)
+        if recipient.status != "active":
+            raise DomainError("NOT_FOUND", "Resource not found.", 404)
     if actor.role != "owner" and role == "admin":
         raise DomainError("FORBIDDEN", "Action not permitted.", 403)
     now = utcnow()
-    session.execute(
-        update(WorkspaceInvite)
-        .where(
+    record = None
+    for prior in session.scalars(
+        select(WorkspaceInvite).where(
             WorkspaceInvite.workspace_id == workspace_id,
             WorkspaceInvite.email == email,
             WorkspaceInvite.accepted_at.is_(None),
             WorkspaceInvite.revoked_at.is_(None),
         )
-        .values(revoked_at=now)
-    )
-    raw = new_secret()
-    record = WorkspaceInvite(
-        workspace_id=workspace_id,
-        invited_by=actor_id,
-        email=email,
-        role=role,
-        token_hash=token_hash(raw),
-        expires_at=now + timedelta(days=7),
-    )
-    session.add(record)
-    session.flush()
+    ):
+        if (
+            prior.role == role
+            and prior.invited_by == actor_id
+            and prior.expires_at > now + timedelta(seconds=30)
+            and prior.token_hash == token_hash(capability(settings, "workspace_invite", prior.id))
+        ):
+            record = prior
+        else:
+            prior.revoked_at = now
+            cancel_invites(session, [prior.id])
+    if record is None:
+        record = WorkspaceInvite(
+            id=uuid4(),
+            workspace_id=workspace_id,
+            invited_by=actor_id,
+            email=email,
+            role=role,
+            expires_at=now + timedelta(days=7),
+        )
+        record.token_hash = token_hash(capability(settings, "workspace_invite", record.id))
+        session.add(record)
+        session.flush()
+    delivery_id = enqueue(session, record, "workspace_invite")
     audit(session, "workspace.invited", actor_id, workspace_id, record.id, role=role)
-    return record, raw
+    return record, delivery_id
 
 
 def accept_invite(session, user, raw):
@@ -367,9 +364,12 @@ def accept_invite(session, user, raw):
     )
     if invite is None:
         raise DomainError("INVALID_TOKEN", "Invitation is invalid or expired.", 400)
-    workspace = session.scalar(
-        select(Workspace).where(Workspace.id == invite.workspace_id).with_for_update()
-    )
+    from app.auth.outbox import cancel_invites
+    from app.common.privacy import lock_workspace, require_unrestricted
+
+    workspace = lock_workspace(session, invite.workspace_id)
+    require_unrestricted(session, workspace.id, user.id)
+    require_unrestricted(session, workspace.id, invite.invited_by)
     session.refresh(invite, with_for_update=True)
     if (
         invite.email != user.email
@@ -398,6 +398,7 @@ def accept_invite(session, user, raw):
         member.status, member.role = "active", invite.role
     # Already-active users keep their current role, never silently downgrade an owner.
     invite.accepted_at = utcnow()
+    cancel_invites(session, [invite.id], "capability_used")
     session.flush()
     audit(session, "workspace.invite_accepted", user.id, workspace.id, member.id)
     return member

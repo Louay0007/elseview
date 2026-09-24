@@ -2,7 +2,17 @@ from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Numeric, String, UniqueConstraint
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    ForeignKeyConstraint,
+    Index,
+    Numeric,
+    String,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -14,10 +24,11 @@ class AIRun(Scoped, Base):
     __tablename__ = "ai_runs"
     __table_args__ = (
         CheckConstraint(
-            "state IN ('queued','running','draft','approved','failed','uncertain','invalidated')",
+            "state IN ('queued','running','draft','approved','failed','uncertain','invalidated','cancelled')",
             name="ck_ai_run_state",
         ),
         UniqueConstraint("workspace_id", "requester_id", "command_key", name="uq_ai_command"),
+        UniqueConstraint("workspace_id", "id", name="uq_ai_run_scope"),
     )
     study_id: Mapped[UUID | None] = mapped_column(ForeignKey("studies.id", ondelete="SET NULL"))
     snapshot_id: Mapped[UUID | None] = mapped_column(
@@ -45,12 +56,16 @@ class AIAttempt(Scoped, Base):
             "state IN ('reserved','sent','uncertain','settled','released')",
             name="ck_ai_attempt_state",
         ),
-        UniqueConstraint("run_id", name="uq_ai_attempt_run"),
+        Index(
+            "uq_ai_attempt_legacy", "run_id", unique=True, postgresql_where=text("step_id IS NULL")
+        ),
+        UniqueConstraint("step_id", name="uq_ai_attempt_step"),
         CheckConstraint(
             "reserved_cost >= 0 AND (actual_cost IS NULL OR actual_cost >= 0)", name="ck_ai_cost"
         ),
     )
     run_id: Mapped[UUID] = mapped_column(ForeignKey("ai_runs.id"))
+    step_id: Mapped[UUID | None] = mapped_column(ForeignKey("ai_steps.id"))
     state: Mapped[str] = mapped_column(String(24), default="reserved")
     reserved_cost: Mapped[Decimal] = mapped_column(Numeric(24, 8))
     actual_cost: Mapped[Decimal | None] = mapped_column(Numeric(24, 8))
@@ -80,3 +95,56 @@ class UsageBudget(Scoped, Base):
     currency: Mapped[str] = mapped_column(String(3))
     reserved: Mapped[Decimal] = mapped_column(Numeric(24, 8), default=Decimal(0))
     spent: Mapped[Decimal] = mapped_column(Numeric(24, 8), default=Decimal(0))
+
+
+class AIRunInput(Scoped, Base):
+    __tablename__ = "ai_run_inputs"
+    __table_args__ = (
+        ForeignKeyConstraint(["workspace_id", "run_id"], ["ai_runs.workspace_id", "ai_runs.id"]),
+        ForeignKeyConstraint(
+            ["workspace_id", "snapshot_id"],
+            ["analysis_snapshots.workspace_id", "analysis_snapshots.id"],
+        ),
+        UniqueConstraint("run_id", "role", name="uq_ai_input_role"),
+        CheckConstraint("role IN ('primary','left','right')"),
+        CheckConstraint("jsonb_typeof(binding)='object' AND octet_length(binding::text)<=4096"),
+    )
+    run_id: Mapped[UUID]
+    snapshot_id: Mapped[UUID]
+    role: Mapped[str] = mapped_column(String(10))
+    binding: Mapped[dict] = mapped_column(JSONB)
+
+
+class AIStep(Scoped, Base):
+    __tablename__ = "ai_steps"
+    __table_args__ = (
+        ForeignKeyConstraint(["workspace_id", "run_id"], ["ai_runs.workspace_id", "ai_runs.id"]),
+        UniqueConstraint("run_id", "ordinal", name="uq_ai_step_ordinal"),
+        CheckConstraint("ordinal BETWEEN 0 AND 4"),
+        CheckConstraint("stage IN ('map','synthesis')"),
+        CheckConstraint("state IN ('pending','sent','complete','stopped')"),
+        CheckConstraint(
+            "jsonb_typeof(membership)='object' AND octet_length(membership::text)<=100000 AND (result IS NULL OR (jsonb_typeof(result)='object' AND octet_length(result::text)<=100000))"
+        ),
+    )
+    run_id: Mapped[UUID]
+    ordinal: Mapped[int]
+    stage: Mapped[str] = mapped_column(String(12))
+    job_id: Mapped[UUID | None] = mapped_column(ForeignKey("jobs.id"))
+    state: Mapped[str] = mapped_column(String(12), default="pending")
+    membership: Mapped[dict] = mapped_column(JSONB)
+    input_digest: Mapped[str] = mapped_column(String(64))
+    result: Mapped[dict | None] = mapped_column(JSONB(none_as_null=True))
+    result_digest: Mapped[str | None] = mapped_column(String(64))
+
+
+class AICommand(Scoped, Base):
+    __tablename__ = "ai_commands"
+    __table_args__ = (
+        ForeignKeyConstraint(["workspace_id", "run_id"], ["ai_runs.workspace_id", "ai_runs.id"]),
+        UniqueConstraint("workspace_id", "requester_id", "command_key", name="uq_ai_bound_command"),
+    )
+    run_id: Mapped[UUID]
+    requester_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"))
+    command_key: Mapped[str] = mapped_column(String(100))
+    request_hash: Mapped[str] = mapped_column(String(64))

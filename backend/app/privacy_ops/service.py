@@ -46,6 +46,12 @@ def tombstone(session, workspace_id, subject_id, purpose):
 
 
 def invalidate_subject_safely(session, workspace_id, subject_id):
+    from app.auth.outbox import restrict_subject
+
+    restrict_subject(session, workspace_id, subject_id)
+    from app.collaboration.mail import cancel_subject
+
+    cancel_subject(session, subject_id, workspace_id)
     if not held(session, workspace_id, subject_id):
         from app.ai.service import invalidate_subject
 
@@ -134,6 +140,7 @@ def sweep_producers(session, workspace_id, limit=100):
 
     from sqlalchemy import JSON, and_, or_
 
+    from app.ai.models import AIRunInput, AIStep
     from app.privacy_ops.events import apply_event, record_event
 
     retained_ai = or_(
@@ -142,6 +149,16 @@ def sweep_producers(session, workspace_id, limit=100):
         AIRun.instruction != "",
         AIRun.coverage != {},
         select(AIEvidence.id).where(AIEvidence.run_id == AIRun.id).exists(),
+        select(AIRunInput.id).where(AIRunInput.run_id == AIRun.id).exists(),
+        select(AIStep.id)
+        .where(
+            AIStep.run_id == AIRun.id,
+            or_(
+                AIStep.membership != {},
+                and_(AIStep.result.is_not(None), AIStep.result != JSON.NULL),
+            ),
+        )
+        .exists(),
     )
     for model, purpose, action, conditions in (
         (CollectionSession, "raw", "session_delete", (CollectionSession.state != "erased",)),

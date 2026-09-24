@@ -7,12 +7,14 @@ from sqlalchemy import select
 from app.auth.dependencies import current_user, rate_limit
 from app.auth.models import User
 from app.collection.models import CollectionSession
+from app.collection.schemas import SessionResponse
 from app.longitudinal import service
 from app.longitudinal.models import Booking, DiaryOccurrence, Notification
 from app.longitudinal.schemas import (
     AttendanceBody,
     BookingBody,
     DiaryBody,
+    DiaryRecoverBody,
     DiaryStartBody,
     RecordingBody,
     RescheduleBody,
@@ -169,13 +171,23 @@ def occurrences(workspace_id: UUID, request: Request, response: Response, user: 
         return [service.occurrence_json(session, row) for row in rows]
 
 
-@router.post(P + "/diary-occurrences/{occurrence_id}/start")
+@router.post(P + "/diary-occurrences/{occurrence_id}/start", response_model=SessionResponse)
 def start_diary(
     occurrence_id: UUID, body: DiaryStartBody, request: Request, response: Response, user: Actor
 ):
     guard(request, response)
     with request.app.state.database.sessions.begin() as session:
         return service.start_diary(session, user.id, occurrence_id, body)
+
+
+@router.post(P + "/diary-occurrences/{occurrence_id}/recover", response_model=SessionResponse)
+def recover_diary(
+    occurrence_id: UUID, body: DiaryRecoverBody, request: Request, response: Response, user: Actor
+):
+    guard(request, response)
+    rate_limit(request, "diary_recovery", str(user.id), 20)
+    with request.app.state.database.sessions.begin() as session:
+        return service.recover_diary(session, user.id, occurrence_id, body)
 
 
 @router.post(S + "/recordings")

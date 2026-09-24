@@ -93,7 +93,11 @@ def test_global_identity_minimized_and_replay_idempotent():
     statements = []
     session = SimpleNamespace(
         scalar=lambda query: user,
-        scalars=lambda query: [profile],
+        scalars=lambda query: (
+            [profile]
+            if query.column_descriptions[0]["entity"] is account.ParticipantProfile
+            else []
+        ),
         execute=statements.append,
         flush=lambda: None,
     )
@@ -107,6 +111,8 @@ def test_global_identity_minimized_and_replay_idempotent():
     assert "DELETE FROM qualifications" in sql
     assert "DELETE FROM one_time_tokens" in sql
     assert "UPDATE refresh_tokens" in sql
+    assert "UPDATE language_assessment_versions" in sql
+    assert "UPDATE language_assessment_decisions" in sql
     assert "panel_consents" not in sql
     account.apply_account_restriction(session, user.id)
     assert user.auth_version == 4

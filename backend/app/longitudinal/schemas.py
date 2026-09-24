@@ -55,6 +55,10 @@ class DiaryStartBody(StrictBody):
     capability: Annotated[str, Field(min_length=43, max_length=128, pattern=r"^[A-Za-z0-9_-]+$")]
 
 
+class DiaryRecoverBody(DiaryStartBody, RevisionBody):
+    pass
+
+
 class RecordingBody(StrictBody):
     asset_id: UUID
     version_id: UUID

@@ -10,6 +10,8 @@ from app.auth.security import token_hash
 from app.auth.service import require_workspace
 from app.common.privacy import get_scoped, lock_workspace
 from app.recruiting import service
+from app.recruiting.assessment_router import router as assessment_router
+from app.recruiting.history_router import router as history_router
 from app.recruiting.models import (
     ParticipantProfile,
     PrivateContact,
@@ -23,14 +25,18 @@ from app.recruiting.schemas import (
     ExperienceLevel,
     Filters,
     ImportBody,
+    InvitationDeliveryResponse,
     InviteBody,
     PanelBody,
     PublicRecruitBody,
     QualificationBody,
+    RecruitmentInvitationResponse,
     ScreenBody,
 )
 
 router = APIRouter(prefix="/api/v1", tags=["recruiting"])
+router.include_router(assessment_router)
+router.include_router(history_router)
 Actor = Annotated[User, Depends(current_user)]
 Token = Annotated[str, Header(alias="X-Invitation-Token", min_length=20, max_length=512)]
 ROOT = "/workspaces/{workspace_id}/recruiting"
@@ -166,20 +172,51 @@ def configure(workspace_id: UUID, launch_id: UUID, body: ConfigBody, request: Re
         }
 
 
-@router.post(ROOT + "/launches/{launch_id}/invitations", status_code=201)
+@router.post(
+    ROOT + "/launches/{launch_id}/invitations",
+    status_code=201,
+    response_model=RecruitmentInvitationResponse,
+)
 def invite(workspace_id: UUID, launch_id: UUID, body: InviteBody, request: Request, user: Actor):
     rate_limit(request, "recruit-invite", str(user.id), 30)
+    from app.collaboration import mail
+
+    settings = request.app.state.settings
+    delivery_id = None
     with request.app.state.database.sessions.begin() as session:
         invitation, candidate, raw = service.issue_invitation(
-            session, workspace_id, user.id, launch_id, body
+            session, workspace_id, user.id, launch_id, body, settings
         )
-        return {
+        if body.delivery == "email":
+            delivery_id = mail.enqueue_invitation(
+                session, settings, workspace_id, user.id, invitation.id
+            )
+        result = {
             "invitation_id": str(invitation.id),
             "candidate_id": str(candidate.id),
-            "invitation_token": raw,
+            "invitation_token": raw if body.delivery == "manual" else None,
             "expires_at": invitation.expires_at,
-            "delivery": "manual",
+            "delivery": "queued" if delivery_id else "manual",
         }
+    mail.dispatch_local(request.app.state.database, settings, delivery_id)
+    return result
+
+
+@router.post(
+    ROOT + "/invitations/{invitation_id}/delivery",
+    status_code=202,
+    response_model=InvitationDeliveryResponse,
+)
+def resend_invitation(workspace_id: UUID, invitation_id: UUID, request: Request, user: Actor):
+    from app.collaboration import mail
+
+    rate_limit(request, "recruit-invite", str(user.id), 30)
+    with request.app.state.database.sessions.begin() as session:
+        delivery_id = mail.enqueue_invitation(
+            session, request.app.state.settings, workspace_id, user.id, invitation_id
+        )
+    mail.dispatch_local(request.app.state.database, request.app.state.settings, delivery_id)
+    return {"status": "queued"}
 
 
 @router.get("/recruiting/invitation")
@@ -226,26 +263,28 @@ def reserve(request: Request, invitation_token: Token, user: Actor):
         }
 
 
-@router.get("/panel/assessments/{language}")
+@router.get("/panel/assessments/{language}", deprecated=True)
 def language_assessment(language: str, user: Actor):
     questions = service.ASSESSMENTS.get(language)
     if questions is None:
         service.fail()
     return {
         "assessment_version": "development-basic-v1",
+        "evidence_kind": "legacy_development_not_reviewed",
         "language": language,
         "questions": [{"prompt": q[0], "options": q[1]} for q in questions],
         "scope": "basic_language_only_not_professional_expertise",
     }
 
 
-@router.post("/panel/qualifications", status_code=201)
+@router.post("/panel/qualifications", status_code=201, deprecated=True)
 def qualify(body: QualificationBody, request: Request, user: Actor):
     rate_limit(request, "qualification", str(user.id), 10)
     with request.app.state.database.sessions.begin() as session:
-        result = service.assess_language(session, user.id, body)
+        result = service.assess_language(session, user.id, body, request.app.state.settings)
         return {
             "language": result.language,
+            "evidence_kind": "legacy_development_not_reviewed",
             "passed": result.passed,
             "expires_at": result.expires_at,
             "scope": "basic_language_only_not_professional_expertise",

@@ -185,16 +185,24 @@ def test_public_summary_strict_allowlist_ignores_injected_metadata():
     assert "leak" not in str(result)
 
 
+@pytest.mark.parametrize("format", ["json", "csv", "pdf", "xlsx"])
+@pytest.mark.parametrize("scope", ["summary", "raw"])
+def test_supported_export_format_contract(format, scope):
+    body = ExportBody.model_validate({"format": format, "scope": scope})
+    assert body.format == format and body.scope == scope
+
+
 @pytest.mark.parametrize(
     "body",
     [
-        {"format": "xlsx"},
-        {"format": "pdf"},
+        {"format": "html"},
+        {"format": "xls"},
+        {"format": "PDF"},
         {"format": "json", "scope": "contacts"},
         {"format": "json", "extra": True},
     ],
 )
-def test_only_existing_csv_json_export_contract(body):
+def test_invalid_export_contract(body):
     with pytest.raises(ValidationError):
         ExportBody.model_validate(body)
 

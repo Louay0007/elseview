@@ -253,9 +253,11 @@ def members(
 def invite(workspace_id: UUID, body: InviteBody, request: Request, user: Actor):
     rate_limit(request, "invite", str(user.id), 20)
     with request.app.state.database.sessions.begin() as session:
-        record, raw = invite_member(session, user.id, workspace_id, body.email, body.role)
+        record, delivery_id = invite_member(
+            session, user.id, workspace_id, body.email, body.role, request.app.state.settings
+        )
         record_id = record.id
-    request.app.state.auth.deliver(body.email, "workspace_invite", raw)
+    request.app.state.auth.dispatch_local(delivery_id)
     return {"id": str(record_id), "status": "invited"}
 
 

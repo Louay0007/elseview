@@ -152,11 +152,19 @@ class ResponseEvent(Base):
 
 class InteractionAttempt(Base):
     __tablename__ = "interaction_attempts"
-    __table_args__ = (UniqueConstraint("session_id", "block_key", name="uq_interaction_attempt"),)
+    __table_args__ = (
+        UniqueConstraint("session_id", "block_key", name="uq_interaction_attempt"),
+        CheckConstraint("protocol_version IN (1, 2)", name="ck_attempt_protocol"),
+    )
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     session_id: Mapped[UUID] = mapped_column(ForeignKey("collection_sessions.id"))
     block_key: Mapped[str] = mapped_column(String(64))
     state: Mapped[str] = mapped_column(String(24), default="started")
-    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    protocol_version: Mapped[int] = mapped_column(default=1, server_default="1")
+    prepared_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    preparation_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    preparation_hash: Mapped[str | None] = mapped_column(String(64))
+    asset_claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     visible_ms: Mapped[int | None]

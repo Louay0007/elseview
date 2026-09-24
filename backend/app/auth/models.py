@@ -102,6 +102,38 @@ class WorkspaceInvite(Base):
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class AuthDelivery(Base):
+    __tablename__ = "auth_deliveries"
+    __table_args__ = (
+        CheckConstraint(
+            "state IN ('pending','dispatching','sent','failed','uncertain','cancelled')",
+            name="ck_auth_delivery_state",
+        ),
+        CheckConstraint("attempts BETWEEN 0 AND 3", name="ck_auth_delivery_attempts"),
+        CheckConstraint(
+            "(purpose IN ('verify','reset') AND token_id IS NOT NULL AND invite_id IS NULL) OR (purpose = 'workspace_invite' AND invite_id IS NOT NULL AND token_id IS NULL)",
+            name="ck_auth_delivery_scope",
+        ),
+    )
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    token_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("one_time_tokens.id", ondelete="CASCADE"), index=True
+    )
+    invite_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("workspace_invites.id", ondelete="CASCADE"), index=True
+    )
+    purpose: Mapped[str] = mapped_column(String(24))
+    state: Mapped[str] = mapped_column(String(16), default="pending", index=True)
+    attempts: Mapped[int] = mapped_column(default=0)
+    outcome: Mapped[str | None] = mapped_column(String(32))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    run_after: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    lease_token: Mapped[UUID | None] = mapped_column()
+    lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class AuditEvent(Base):
     __tablename__ = "audit_events"
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)

@@ -40,6 +40,29 @@ def resolve(settings, depth: Depth = "standard"):
     }
 
 
+def orchestration(settings, depth: Depth):
+    """Revision 2: bounded source maps followed by evidence-preserving synthesis."""
+    profile = resolve(settings, depth)
+    maps = {"quick": 1, "standard": 2, "deep": 4}[depth]
+    return profile | {
+        "revision": "2",
+        "execution": "bounded_graph",
+        "max_provider_calls": 1 if maps == 1 else maps + 1,
+        "max_maps": maps,
+        "max_source_chars": min(96000, maps * 24000),
+        "max_chunks": maps * 32,
+        "max_output_bytes": 16000,
+        "intermediate_bytes": min(
+            16000, max(0, settings.llm_context_limit - profile["max_output_tokens"] - 4096) // 2
+        ),
+        "limitations": [
+            "Bounded source maps and synthesis; not exhaustive study findings.",
+            "UTF-8/protocol upper bound, not a guarantee of provider charges.",
+            "Human review required; counts refer to answer revisions, not people.",
+        ],
+    }
+
+
 def effective(run_config):
     """Legacy JSON keeps its original configured limits without a data migration."""
     if "depth_profile" in run_config:

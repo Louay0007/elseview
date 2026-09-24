@@ -50,6 +50,12 @@ class GrantBody(Body):
 
 class PreferenceBody(Body):
     reminders: bool
+    email_reminders: bool | None = None
+
+
+class NotificationPreferenceResponse(BaseModel):
+    reminders: bool
+    email_reminders: bool
 
 
 class IntegrationBody(Body):
@@ -242,7 +248,10 @@ def revoke_grant(wid: UUID, kind: str, gid: UUID, request: Request, user: Actor)
         g.revoked = True
 
 
-@router.put("/workspaces/{wid}/collaboration/notification-preferences")
+@router.put(
+    "/workspaces/{wid}/collaboration/notification-preferences",
+    response_model=NotificationPreferenceResponse,
+)
 def preference(wid: UUID, body: PreferenceBody, request: Request, user: Actor):
     with request.app.state.database.sessions.begin() as s:
         # Participants need not be workspace staff; consent restriction still applies.
@@ -258,7 +267,14 @@ def preference(wid: UUID, body: PreferenceBody, request: Request, user: Actor):
             row = NotificationPreference(workspace_id=wid, user_id=user.id)
             s.add(row)
         row.reminders = body.reminders
-        return {"reminders": row.reminders}
+        if body.email_reminders is not None:
+            row.email_reminders = body.email_reminders
+        s.flush()
+        from app.collaboration.mail import cancel_subject
+
+        if not row.reminders or not row.email_reminders:
+            cancel_subject(s, user.id, wid, reminders_only=True)
+        return {"reminders": row.reminders, "email_reminders": row.email_reminders}
 
 
 @router.get("/participant/bookings/{bid}/calendar.ics")
@@ -349,9 +365,21 @@ def deliver(wid: UUID, iid: UUID, body: DeliveryBody, request: Request, user: Ac
         return {"id": str(row.id), "job_id": str(job.id), "state": row.state}
 
 
-@router.get("/workspaces/{wid}/collaboration/notification-preferences")
+@router.get(
+    "/workspaces/{wid}/collaboration/notification-preferences",
+    response_model=NotificationPreferenceResponse,
+)
 def get_preference(wid: UUID, request: Request, user: Actor):
     with request.app.state.database.sessions.begin() as s:
         lock_workspace(s, wid)
         service.require_notification_subject(s, wid, user.id)
-        return {"reminders": service.notification_allowed(s, wid, user.id)}
+        row = s.scalar(
+            select(NotificationPreference).where(
+                NotificationPreference.workspace_id == wid,
+                NotificationPreference.user_id == user.id,
+            )
+        )
+        return {
+            "reminders": service.notification_allowed(s, wid, user.id),
+            "email_reminders": bool(row and row.email_reminders),
+        }

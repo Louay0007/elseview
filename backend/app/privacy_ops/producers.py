@@ -1,6 +1,6 @@
 """Remaining producers; scoped erasure does not destroy another tenant's identity."""
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 
 from app.auth.security import utcnow
 
@@ -18,11 +18,15 @@ def purge_subject(session, workspace_id, subject_id):
         row.expires_at = utcnow()
     for row in session.scalars(select(AuditEvent).where(AuditEvent.workspace_id == workspace_id)):
         row.details = {}
+    from app.auth.outbox import restrict_subject
+
+    restrict_subject(session, workspace_id, subject_id)
     user = session.get(User, subject_id)
     if user:
         for invite in session.scalars(
             select(WorkspaceInvite).where(
-                WorkspaceInvite.workspace_id == workspace_id, WorkspaceInvite.email == user.email
+                WorkspaceInvite.workspace_id == workspace_id,
+                or_(WorkspaceInvite.email == user.email, WorkspaceInvite.invited_by == subject_id),
             )
         ):
             invite.email = str(invite.id) + "@erased.invalid"

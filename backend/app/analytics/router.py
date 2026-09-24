@@ -8,6 +8,7 @@ from app.auth.dependencies import current_user, rate_limit
 from app.auth.models import User
 
 from . import service
+from .exports import MEDIA_TYPES
 
 router = APIRouter(prefix="/api/v1", tags=["analytics"])
 Actor = Annotated[User, Depends(current_user)]
@@ -27,6 +28,17 @@ class ReportBody(Strict):
     snapshot_id: UUID
 
 
+class ReportIndexItem(BaseModel):
+    id: UUID
+    revision: int = Field(ge=1)
+    state: Literal["draft", "approved", "invalidated"]
+
+
+class ReportIndexResponse(BaseModel):
+    items: list[ReportIndexItem]
+    has_more: bool
+
+
 class RevisionBody(Strict):
     expected_revision: int = Field(ge=1)
 
@@ -40,7 +52,7 @@ class ShareBody(Strict):
 
 
 class ExportBody(Strict):
-    format: Literal["json", "csv"]
+    format: Literal["json", "csv", "pdf", "xlsx"]
     scope: Literal["summary", "raw"] = "summary"
 
 
@@ -89,6 +101,20 @@ def compare(
     guard(request, response, user)
     with request.app.state.database.sessions.begin() as session:
         return service.compare(session, workspace_id, user.id, left_id, right_id)
+
+
+@router.get(BASE + "/reports", response_model=ReportIndexResponse)
+def report_index(
+    workspace_id: UUID,
+    request: Request,
+    response: Response,
+    user: Actor,
+    limit: Annotated[int, Query(ge=1, le=100)] = 25,
+    offset: Annotated[int, Query(ge=0, le=10000)] = 0,
+):
+    guard(request, response, user)
+    with request.app.state.database.sessions.begin() as session:
+        return service.list_reports(session, workspace_id, user.id, limit, offset)
 
 
 @router.post(BASE + "/reports", status_code=201)
@@ -165,19 +191,20 @@ def export_download(
     workspace_id: UUID, export_id: UUID, request: Request, response: Response, user: Actor
 ):
     guard(request, response, user)
-    with request.app.state.database.sessions.begin() as session:
-        content, media_type = service.download_export(session, workspace_id, user.id, export_id)
-        return Response(
-            content,
-            media_type=media_type,
-            headers={
-                "Cache-Control": "no-store",
-                "Content-Disposition": 'attachment; filename="report.'
-                + ("csv" if media_type == "text/csv" else "json")
-                + '"',
-                "X-Content-Type-Options": "nosniff",
-            },
-        )
+    content, media_type = service.download_export(
+        request.app.state.database.sessions, workspace_id, user.id, export_id
+    )
+    return Response(
+        content,
+        media_type=media_type,
+        headers={
+            "Cache-Control": "no-store",
+            "Content-Disposition": 'attachment; filename="report.'
+            + next(format for format, kind in MEDIA_TYPES.items() if kind == media_type)
+            + '"',
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
 
 
 @router.post(BASE + "/reports/{report_id}/shares", status_code=201)

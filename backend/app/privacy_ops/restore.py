@@ -44,12 +44,14 @@ def export_tombstones(session, path, signing_key):
     from app.privacy_ops.account_models import AccountErasure
     from app.privacy_ops.lifecycle_models import ContactHold
     from app.privacy_ops.models import LegalHold, RestoreEvent, Tombstone
+    from app.recruiting.assessment_privacy import export_revocations
 
     if len(signing_key) < 32:
         raise ValueError("Use an operator-provided signing key of at least 32 bytes")
     rows = session.scalars(select(Tombstone).order_by(Tombstone.id)).all()
     manifest = {
-        "version": 3,
+        "version": 4,
+        "assessment_revocations": export_revocations(session),
         "accounts": [
             {"subject_id": str(row.subject_id), "workspace_ids": sorted(row.workspace_ids)}
             for row in session.scalars(select(AccountErasure).order_by(AccountErasure.subject_id))
@@ -123,10 +125,21 @@ def read_manifest(path, signing_key, expected_digest):
     ):
         raise ValueError("Manifest authentication or latest digest mismatch")
     version = manifest.get("version")
-    expected_keys = {"version", "tombstones", "holds", "contact_holds", "events", "accounts"}
-    if set(manifest) != expected_keys or version != 3:
+    expected_keys = {
+        "version",
+        "tombstones",
+        "holds",
+        "contact_holds",
+        "events",
+        "accounts",
+        "assessment_revocations",
+    }
+    if set(manifest) != expected_keys or version != 4:
         raise ValueError("Unsupported manifest")
     from app.privacy_ops.events import ACTIONS
+    from app.recruiting.assessment_privacy import validate_revocations
+
+    validate_revocations(manifest["assessment_revocations"])
 
     for account in manifest["accounts"]:
         if set(account) != {"subject_id", "workspace_ids"} or not isinstance(
@@ -200,8 +213,8 @@ def replay(
     marker = target / ".privacy-ready"
     marker.unlink(missing_ok=True)
     manifest = read_manifest(manifest_path, signing_key, expected_digest)
-    if manifest["version"] != 3:
-        raise ValueError("Restore requires a current manifest including active holds")
+    if manifest["version"] != 4:
+        raise ValueError("Restore requires a current manifest including assessment revocations")
     from importlib import import_module
 
     for module in (
@@ -343,6 +356,20 @@ def replay(
                 sid = UUID(account["subject_id"])
                 if session.get(User, sid) is not None:
                     apply_account_restriction(session, sid)
+            from app.recruiting.assessment_privacy import replay_revocations, sweep
+
+            replay_revocations(session, manifest["assessment_revocations"])
+            while sweep(session, limit=500):
+                pass
+            from app.auth.outbox import quarantine_restored
+
+            quarantine_restored(session)
+            from app.collaboration.mail import quarantine_restored as quarantine_notifications
+
+            quarantine_notifications(session)
+            from app.ai.orchestration import quarantine_restored as quarantine_ai
+
+            quarantine_ai(session)
             session.flush()
             session.execute(
                 text(
@@ -365,6 +392,12 @@ def replay(
                 ),
                 {"nonce": nonce, "digest": expected_digest},
             )
+        # Local development capture is a separate capability-bearing filesystem lifecycle.
+        spool = target / "dev-mail"
+        if spool.is_symlink():
+            raise ValueError("Restored mailbox cannot be a symlink")
+        for capture in spool.glob("*.json"):
+            capture.unlink(missing_ok=True)
         # Marker written ONLY after committed replay. App lead gates restore readiness.
         fd = os.open(marker, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         with os.fdopen(fd, "w") as stream:

@@ -2,7 +2,9 @@ FROM python:3.12-slim-bookworm@sha256:392307d22300de8b5986851a12d9176dfc0fc073e6
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_DISABLE_PIP_VERSION_CHECK=1
 WORKDIR /app/backend
 COPY requirements.lock ./
-RUN pip install --no-cache-dir --require-hashes -r requirements.lock \
+RUN apt-get update && apt-get install -y --no-install-recommends fonts-dejavu-core \
+    && rm -rf /var/lib/apt/lists/* \
+    && pip install --no-cache-dir --require-hashes -r requirements.lock \
     && useradd --uid 10001 --create-home appuser \
     && mkdir -p /app/private/assets /app/private/tmp \
     && chown -R appuser:appuser /app

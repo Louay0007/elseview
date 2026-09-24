@@ -81,6 +81,58 @@ class NotificationPreference(Scoped, Base):
     __table_args__ = (UniqueConstraint("workspace_id", "user_id"),)
     user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"))
     reminders: Mapped[bool] = mapped_column(default=True)
+    email_reminders: Mapped[bool] = mapped_column(default=False, server_default="false")
+
+
+class NotificationDelivery(Scoped, Base):
+    """Source references only; SMTP content is reconstructed after authorization."""
+
+    __tablename__ = "notification_deliveries"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["workspace_id", "invitation_id"],
+            ["invitations.workspace_id", "invitations.id"],
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "notification_id"],
+            ["notifications.workspace_id", "notifications.id"],
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "occurrence_id"],
+            ["diary_occurrences.workspace_id", "diary_occurrences.id"],
+            ondelete="CASCADE",
+        ),
+        CheckConstraint(
+            "(purpose = 'recruitment_invite' AND invitation_id IS NOT NULL AND notification_id IS NULL AND occurrence_id IS NULL) OR "
+            "(purpose = 'interview_reminder' AND notification_id IS NOT NULL AND invitation_id IS NULL AND occurrence_id IS NULL) OR "
+            "(purpose = 'diary_reminder' AND occurrence_id IS NOT NULL AND invitation_id IS NULL AND notification_id IS NULL)",
+            name="ck_notification_delivery_source",
+        ),
+        CheckConstraint(
+            "state IN ('pending','dispatching','sent','failed','uncertain','cancelled')",
+            name="ck_notification_delivery_state",
+        ),
+        CheckConstraint("attempts BETWEEN 0 AND 3", name="ck_notification_delivery_attempts"),
+    )
+    recipient_id: Mapped[UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    issuer_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    invitation_id: Mapped[UUID | None] = mapped_column(index=True)
+    notification_id: Mapped[UUID | None] = mapped_column(index=True)
+    occurrence_id: Mapped[UUID | None] = mapped_column(index=True)
+    purpose: Mapped[str] = mapped_column(String(32))
+    privacy_epoch: Mapped[int]
+    state: Mapped[str] = mapped_column(String(16), default="pending", index=True)
+    outcome: Mapped[str | None] = mapped_column(String(32))
+    attempts: Mapped[int] = mapped_column(default=0)
+    run_after: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    lease_token: Mapped[UUID | None]
+    lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class Integration(Scoped, Base):

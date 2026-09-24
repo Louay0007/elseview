@@ -1,0 +1,1 @@
+{"manifest": {"version": 4, "assessment_revocations": [], "tombstones": [], "holds": [], "contact_holds": [{"workspace_id": "2cdf69b5-f6ae-4487-b98d-749a5911270e", "contact_id": "bad"}], "accounts": [], "events": []}, "signature": "8ae861432dcc14bd2a8272bb866afdecd0be10fbd4c27aeb93b18012a3ebb76d"}

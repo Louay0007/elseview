@@ -143,7 +143,7 @@ def test_reset_token_consumed_once_concurrently(identity_service):
 
 
 @pytest.mark.db
-def test_invitation_subject_expiry_and_revoked_inviter(db_engine):
+def test_invitation_subject_expiry_and_revoked_inviter(db_engine, settings):
     with Session(db_engine) as session, session.begin():
         users = [
             User(
@@ -156,7 +156,10 @@ def test_invitation_subject_expiry_and_revoked_inviter(db_engine):
         session.add_all(users)
         session.flush()
         ws = create_workspace(session, users[0].id, "Invite limits")
-        invite, raw = invite_member(session, users[0].id, ws.id, users[1].email, "viewer")
+        from app.auth.outbox import capability
+
+        invite, _ = invite_member(session, users[0].id, ws.id, users[1].email, "viewer", settings)
+        raw = capability(settings, "workspace_invite", invite.id)
         uid, other_id, wid, invite_id = users[1].id, users[2].id, ws.id, invite.id
     with Session(db_engine) as session, session.begin():
         with pytest.raises(DomainError):

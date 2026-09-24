@@ -6,6 +6,26 @@ from pydantic import Field, field_validator
 from app.common.privacy_schemas import Key, Locale, StrictBody
 
 
+class SavedAnswerResponse(StrictBody):
+    revision: int
+    answer: dict
+
+
+class SessionResponse(StrictBody):
+    session_id: UUID
+    occurrence_id: UUID | None
+    locale: Locale
+    version_id: UUID
+    state: Literal["active", "submitted", "withdrawn", "erased"]
+    revision: int
+    saved: Literal[True]
+    last_sequence: int
+    block: dict | None
+    answers: dict[str, SavedAnswerResponse]
+    complete: bool
+    submitted_at: str | None
+
+
 class StartBody(StrictBody):
     invitation_token: Annotated[str, Field(min_length=20, max_length=4096)]
     capability: Annotated[str, Field(min_length=43, max_length=128, pattern=r"^[A-Za-z0-9_-]+$")]
@@ -46,6 +66,23 @@ class EventBody(StrictBody):
 class BatchBody(StrictBody):
     version_id: UUID
     events: Annotated[list[EventBody], Field(min_length=1, max_length=100)]
+
+
+class PrepareExposureBody(StrictBody):
+    protocol_version: Literal[2]
+    version_id: UUID
+    capability: Annotated[str, Field(min_length=43, max_length=128, pattern=r"^[A-Za-z0-9_-]+$")]
+
+    @field_validator("protocol_version", mode="before")
+    @classmethod
+    def strict_protocol(cls, value):
+        if type(value) is not int:
+            raise ValueError("Integer required")
+        return value
+
+
+class StartExposureBody(PrepareExposureBody):
+    attempt_id: UUID
 
 
 class SubmitBody(StrictBody):

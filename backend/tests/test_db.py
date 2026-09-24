@@ -133,13 +133,27 @@ def test_boot_twice_does_not_create_tables_or_seed(
     assert after == before
 
 
-def test_real_readiness_checks_schema(settings, db_engine, monkeypatch):
+@pytest.mark.parametrize(
+    "outdated_revision",
+    [
+        "wrong_revision",
+        "024_exposure_preparation",
+        "025_auth_delivery",
+        "026_language_assessments",
+        "027_diary_recovery",
+        "028_notification_delivery",
+    ],
+)
+def test_real_readiness_checks_schema(settings, db_engine, monkeypatch, outdated_revision):
     database = Database(settings)
     database.engine.dispose()
     database.engine = db_engine
     assert database.check_ready() is True
     with db_engine.begin() as conn:
-        conn.execute(text("UPDATE alembic_version SET version_num = 'wrong_revision'"))
+        conn.execute(
+            text("UPDATE alembic_version SET version_num = :revision"),
+            {"revision": outdated_revision},
+        )
     try:
         assert database.check_ready() is False
     finally:
@@ -149,7 +163,8 @@ def test_real_readiness_checks_schema(settings, db_engine, monkeypatch):
             )
 
 
-def test_migration_down_up_and_repeat(db_engine):
+def test_migration_down_up_and_repeat(migration_engine):
+    db_engine = migration_engine
     from pathlib import Path
 
     from alembic import command

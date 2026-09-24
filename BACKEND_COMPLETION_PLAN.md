@@ -40,17 +40,23 @@ A disabled or unvalidated integration stays `blocked-external`, not `done`. If a
 
 | Package | Implemented in this checkpoint | Still required before package completion |
 |---|---|---|
-| C01 | Explicit success schemas for eight auth endpoints; refreshed OpenAPI artifact (174 paths) and corresponding client auth types | Remaining success schemas, full traceability and artifact/job ownership contracts |
-| C02 | Opt-in certificate-verified SMTP transport, private development fallback, disabled mode, redacted failures and uncertain-send handling | Durable auth-scoped delivery, resend/old-token semantics, timing-enumeration protection, recruitment/reminder delivery, provider/domain approval and live evidence |
-| C03 | Optional country/city and versioned experience targeting; public consent v2/private targeting consent; imports, filters and frozen snapshots | Real PostgreSQL isolation/race evidence, consent wording approval, frontend wiring, reviewed qualifications, reassessment, history and quality/appeal evidence |
-| C05 | Versioned quick/standard/deep **single-call** profiles, read-only estimate endpoint, persisted effective limits and cache identity | Multi-call persistence/finalization, full comparison/subgroup contracts, frontend confirmation/review, DB acceptance and human/live quality benchmarks |
-| C04, C06–C10 | No implementation change in this checkpoint | All outstanding work listed in the packages below; no manual proxy is counted as completion |
-| C11–C12 | Non-destructive regression checks only | Real browser/database stories, guarded migration/race/restore/load checks and production operational evidence |
+| C01 | Explicit auth, assessment, collection/history, report-index, notification preference and invitation success schemas; checked 202-path OpenAPI and effective authentication; matching client DTO subsets | Remaining success schemas/types, full traceability and artifact/job ownership contracts; reconcile final AI artifact/types after active work |
+| C02 | Verified-TLS SMTP; durable auth/workspace/recruitment invitations and opt-in interview/diary reminders; stable resends, bounded retry, unknown-send quarantine, source/authority/privacy/restore gates and fair embedded execution | Provider/domain approval, real timing/privacy acceptance and live deliverability; hashed-only private contacts remain manual |
+| C03 | Consented country/city/versioned experience targeting, private imports/frozen snapshots; reviewed assessment decisions/appeals/expiry and retained consent history; own response/review/appeal/reward/payment/attendance history | Genuine approved assessment content, profile UI (in progress), complete recruitment/participant journeys and human acceptance |
+| C04 | Bounded private PDF/XLSX/CSV/JSON, raw/summary authorization and post-render recheck; privacy-safe report index; authenticated report versions/approval/download UI | Arabic-reader sign-off, populated real browser/API/database report journey and cross-platform resource/visual acceptance |
+| C05 | Revision-1 quick/standard/deep **single-call** profiles, read-only estimates and pinned limits/cache identities | Revision-2 persisted multichunk/comparison orchestration is in progress; subgroup disclosure ledger, all-operation/UI coverage and human/live benchmarks remain |
+| C06 | V2 prepare/asset/start/completed-or-interrupted five-second protocol, visibility handling, no replay on resume, legacy compatibility and PostgreSQL/browser regressions | Full real browser/API/database method journeys and remaining private media/accessibility evidence |
+| C07 | Revision-fenced diary recovery preserving answers/locale/accounting; opt-in durable interview/diary email reminders | Repeating prompt subsets, expanded recordings, transcription/voice/sandbox automation and integrated acceptance |
+| C08–C09 | Existing backend contracts retained; optional delivery source events now persist reminder work | Remaining real domain-event/vendor integrations and commercial contracts/acceptance listed below; no manual proxy counts as automation |
+| C10 | Memory-only account/recovery/session flows, workspace/study/reviewer/schedule navigation, assessment/retained-consent UI, participant history and report versions/approval/downloads | Full researcher builder/AI/recruitment/billing and participant profile/invitation flows; full RTL/accessibility acceptance |
+| C11–C12 | Fresh RAM-backed PostgreSQL and isolated authenticated nonpersistent Valkey; guarded migration/restore regressions; real built-frontend/account/API/database journeys at desktop/mobile | Expanded report/history real journey must rerun after029 readiness integration; ten full stories, final aggregate/load/physical-archive evidence remain |
 | C13 | No external activation or release action | Operator-approved providers, qualified human reviewers, real pilot participants, commercial/privacy review and launch decision |
 
-Validation for the current increments: **627 non-database backend tests passed**, **402 infrastructure/live/other marked tests deselected**; frontend **11 tests passed** and production build passed. The first broad backend run encountered macOS's Unix-socket path limit; the same suite passed with a fresh short project-local temporary directory. SMTP tests use mocked transports; auth HTTP contract tests isolate service/cache dependencies. Six new recruitment database regressions are present but **not executed**. Historical database/coverage evidence below is not refreshed by these results.
+Current focused evidence includes **262 notification/auth/longitudinal/privacy regressions**, **14 delivery database/readiness/migration tests**, **51 assessment/retained-consent tests**, **75 report-index/export tests**, and **15 participant-history unit/database tests**. These overlapping runs are not a unique aggregate. The current200-path OpenAPI regeneration passed4 contract drift/security tests. Frontend **19 Node tests and production build passed**. Desktop/mobile account/report/history fixtures passed; reports have51 checks and history38 per viewport. Native Enter, AX-main, no-overflow,44px labeled targets and measured contrast were checked in their stated scopes; no human accessibility certification is implied.
 
-No migration, database reset, provider send, payment, deployment, commit or push was performed. None of C01–C13 is fully closed. The remaining internal implementation is a real backlog, **not merely external approval paperwork**. An exclusive disposable PostgreSQL test target and explicit reset authorization are needed before the guarded DB runner may validate the next persistence-heavy changes.
+A combined actual production-build account/API/PostgreSQL/Valkey/cache/harness/history run passed **36 tests**, including real desktop/mobile login, persistence/reload, assessments and session revocation. The later expanded report/history journey run passed41 backend tests but its two browser tests stopped at real readiness during active029 AI-head integration. That assertion remains enabled; the expanded navigation is not yet verified. The latest broad pre-notification/history run recorded **1,269 passed,1 deselected,2 CACHE_URL setup errors**; the isolated-cache harness correction subsequently passed13 cache and6 harness tests. A final aggregate run remains required.
+
+`scripts/test_fresh.py` creates uniquely named RAM-backed PostgreSQL and optional authenticated nonpersistent Valkey containers from cached pinned images, verifies an empty dedicated database and cleans only its own resources. Default marker exclusions remain effective with explicit selectors; `--with-browser` also provisions cache. Migration/restore tests use separate child databases. Existing databases/volumes/cache are untouched. The last fully validated migration chain reaches028;029 revision-2 AI is in progress. No operator migration, live provider send/call, payment, deployment, commit or push occurred. None of C01–C13 is fully closed. Remaining internal work is a real backlog, **not merely external approval paperwork**.
 
 ## 2. Coverage and ownership map
 
@@ -58,19 +64,19 @@ No migration, database reset, provider send, payment, deployment, commit or push
 
 | Idea or acceptance requirement | Current boundary | Completion owner |
 |---|---|---|
-| Auth, workspaces, invitations, recovery | Production email unavailable | C01, C02, C10 |
+| Auth, workspaces, invitations, recovery | Account UI and durable auth/recruitment/reminder SMTP implemented; approved live delivery remains | C01, C02, C10 |
 | Study builder, branching, preview, versions | Backend present; product UI incomplete | C01, C06, C10 |
 | Surveys, preference, first click, card/tree, ranking, usability | Existing methods need integrated product acceptance | C06, C10, C11 |
-| Five-second research | Preview/backend contracts exist; full collection browser gate unresolved | C06, C11 |
-| City, age, language, device, experience recruitment | City/experience absent from native attributes and filters | C03 |
-| Public/private panels, screeners, quotas | Existing implementation must remain isolated and race-safe | C03, C11 |
-| Qualified testers, quality scores/history, no-shows | Basic development qualification; verify remaining profile/history gaps | C03, C10 |
-| Review, attention/duplicate flags, appeals, rewards | Existing rules/ledger; preserve human decisions and earned obligations | C03, C09, C11 |
-| Metrics, comparisons, charts, raw data and shares | Metrics/CSV/JSON present; full reporting UI and PDF/XLSX missing | C04, C05, C10 |
-| AI summaries, failures, translation, sentiment, clarity, Q&A | Nine operations exist; live quality and complete use-case outputs unverified | C05, C11 |
-| Comparison writing and subgroup insight finding | Explicit operation/structured evidence coverage needs acceptance | C05 |
-| Quick/standard/deep AI, costs, batching and cache | Depth selection absent; extend bounded current pipeline | C05, C09 |
-| Interviews, reminders, diary, transcripts/highlights | In-app/manual workflows; limited diary/media behavior | C02, C07, C10 |
+| Five-second research | V2 one-shot preparation/start/visibility/resume implemented; full real collection journey remains | C06, C11 |
+| City, age, language, device, experience recruitment | Consented native country/city/experience attributes, filters, private imports and frozen targeting implemented | C03 |
+| Public/private panels, screeners, quotas | Existing isolation and intersecting-cell rules retained; full recruitment product journey remains | C03, C11 |
+| Qualified testers, quality scores/history, no-shows | Independent reviewed assessments and private scoped participation/attendance history implemented; approved content/profile/full acceptance remain | C03, C10 |
+| Review, attention/duplicate flags, appeals, rewards | Human review/appeal and retained own financial history integrated; manual records remain distinct from transfers | C03, C09, C11 |
+| Metrics, comparisons, charts, raw data and shares | Private four-format exports and authenticated report index/version/approval/download UI implemented; full visual/human acceptance remains | C04, C05, C10 |
+| AI summaries, failures, translation, sentiment, clarity, Q&A | Nine revision-1 operations retained; all-operation revision-2 and live quality acceptance remain | C05, C11 |
+| Comparison writing and subgroup insight finding | Bounded two-snapshot comparison is in progress; privacy-safe subgroup release history still required | C05 |
+| Quick/standard/deep AI, costs, batching and cache | Versioned single-call depth/estimates implemented; persisted multichunk billing/retry work in progress | C05, C09 |
+| Interviews, reminders, diary, transcripts/highlights | Opt-in email reminders and diary recovery implemented; prompt subsets/media/automation remain | C02, C07, C10 |
 | Voice/accent and video-ad evaluation | Manual/import or storyboard proxies | C06, C07 |
 | Chatbot, safety, preference, dialect and dataset evaluation | Human evaluation exists; external sandbox remains manual | C03, C07, C11 |
 | Product, marketing, business and localization templates | 23 recipes exist; verify every idea use case, not just catalogue count | C06, C10, C11 |
@@ -294,9 +300,22 @@ Do not promise calendar dates from phase counts. After C01, estimate each vertic
 5. Review final diff, regenerate affected contracts, update API documentation and record exact evidence in `IMPLEMENTATION_STATUS.md`.
 6. After substantial changes, perform independent code review; resolve release-blocking findings before closing the slice.
 
-### Existing commands available for future execution
+### Current isolated validation commands
 
-Run from the repository root with dependencies/services already configured. These are **planned commands, not executed results**.
+Run from the repository root with existing dependencies and cached pinned images. The isolated runner provisions and cleans only resources it creates. These command examples are not additional execution claims; exact results are recorded above.
+
+```sh
+backend/.venv/bin/python scripts/test_fresh.py -q tests/test_participant_history.py tests/test_participant_history_db.py
+backend/.venv/bin/python scripts/test_fresh.py --with-browser -q tests/test_live_account_browser.py
+# Broader ordinary/database/cache/local-browser checkpoint; live-provider/load stay excluded.
+backend/.venv/bin/python scripts/test_fresh.py --with-browser -q
+```
+
+`--with-cache` enables isolated Valkey without browser tests. The real browser runner builds the shipped frontend and uses loopback HTTP, PostgreSQL and Valkey; default marker exclusions persist even when file selectors are supplied. Do not override them to enable live providers or operational load without approval.
+
+### Existing configured-environment commands
+
+The commands below require separately approved configured services. They are examples, not additional executed results.
 
 ```sh
 # Non-destructive source/contract checks against the configured backend container.
@@ -337,4 +356,4 @@ Use separately approved guarded commands for load, live adapters, migration roun
 - [ ] Commercial/privacy/provider approvals and real pilot evidence exist; unresolved requirements remain visible.
 - [ ] Final documentation, model/test inventory and operational handoff are current; an explicit release decision is recorded.
 
-**Next implementation action:** C01 scope/contract reconciliation, then C02 production delivery and C03 recruitment gaps with their corresponding product flows. Creating this plan completes planning only, not the backend or launch.
+**Next implementation action:** stabilize and verify revision-2 AI integration, finish profile/navigation acceptance, then continue the remaining internal C01/C03/C05–C12 work (including diary prompt subsets and complete product journeys). External provider/human/commercial approvals remain separate blocked gates. The implemented increments above do not constitute full-plan completion or release authorization.

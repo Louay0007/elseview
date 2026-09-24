@@ -93,7 +93,7 @@ def assignments(
                     "submitted": service.outcome_for(session, a) is not None,
                 }
             )
-        return {"items": result, "offset": offset, "limit": limit}
+        return {"items": result, "offset": offset, "limit": limit, "has_more": len(rows) == limit}
 
 
 @router.get("/assignments/{assignment_id}")

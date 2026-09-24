@@ -4,6 +4,8 @@
 
 **What remains:** [Completion and release plan](BACKEND_COMPLETION_PLAN.md) tracks missing features, full-product acceptance and production prerequisites. For the latest executed backend evidence and schema head, use [Implementation status](docs/backend/IMPLEMENTATION_STATUS.md); older phase descriptions below are historical checkpoints.
 
+Current completion increments add consented geographic/experience targeting, reviewed language assessments and consent history, private participant response/review/appeal/reward/payment/attendance history, bounded single-call AI depth estimates, authenticated reporting and private PDF/XLSX exports, durable auth/recruitment invitation email, opt-in interview/diary email reminders, V2 five-second exposure and authenticated diary recovery. The last fully validated migration chain reaches `028_notification_delivery`; revision-2 AI and029 integration are in progress. Apply additive migrations only through the approved operator workflow, never by resetting data. Full feature/product/production completion is not claimed; see the current [validation checkpoint](docs/backend/IMPLEMENTATION_STATUS.md#completion-plan-increment--partial-development).
+
 P18 adds checked OpenAPI/error contracts, React/browser contract fixtures, guarded
 load measurements and restart checks. P19 adds integrated backend acceptance and
 a ten-story coverage map; remaining combined browser/live-provider/production
@@ -40,7 +42,7 @@ uncertain-charge handling, and seven advanced research methods with React render
 and a minimal existing-session participant runner.
 
 **Not enabled or certified:** live provider compatibility/dialect quality, automated
-financial transfers, cloud transcription, external sandbox connectors, XLSX/PDF export or P16–P19; no public-production release or full
+financial transfers, cloud transcription or external sandbox connectors; no public-production release or full
 browser accessibility certification is claimed. The embedded runner
 executes `system.check` and internally authorized `privacy.erase` and
 `collection.quality`, `ai.generate` and `longitudinal.reminder`. Public job submission cannot invoke internal
@@ -92,9 +94,11 @@ Refresh requires the cookie, allowed Origin and `X-CSRF-Token`. Logout requires 
 
 **Development email:** verification/reset/invitation messages are written to private `/app/private/dev-mail/*.json` inside the backend volume, with directory/file permissions 0700/0600. An operator can inspect that mailbox using `scripts/dev exec`; it is not exposed through an HTTP endpoint and tokens are not printed in logs. Files expire from the spool after 24 hours during subsequent delivery, with a 1,000-message cap. Token validity is separately enforced by the database. This remains the default development transport. Delivery can be requested again through verification/reset requests; do not publish the mailbox or backups.
 
-**Opt-in SMTP transport (partial C02):** `MAIL_MODE=smtp` requires `APP_ENV=production`, HTTPS origin settings, `SMTP_DELIVERY_APPROVED=true`, a configured `SMTP_HOST`/`SMTP_SENDER`, and operator-provisioned `SMTP_USERNAME`/`SMTP_PASSWORD`. `SMTP_TLS=implicit` (default port 465) or `starttls` (set the provider's port explicitly) requires certificate-verified TLS before authentication; plaintext fallback is not supported. `SMTP_TIMEOUT_SECONDS` defaults to 5, bounded to 15 per socket operation. `MAIL_MODE=disabled` prevents delivery. Configure these in the backend process environment; the local Compose configuration does not forward them automatically. No account/domain is provisioned or activated by this repository.
+**Opt-in SMTP transport (partial C02):** `MAIL_MODE=smtp` requires `APP_ENV=production`, HTTPS origin settings, `SMTP_DELIVERY_APPROVED=true`, a configured `SMTP_HOST`/`SMTP_SENDER`, and operator-provisioned ASCII `SMTP_USERNAME`/`SMTP_PASSWORD` supported by the standard-library authentication transport. `SMTP_TLS=implicit` (default port 465) or `starttls` (set the provider's port explicitly) requires certificate-verified TLS before authentication; plaintext fallback is not supported. `SMTP_TIMEOUT_SECONDS` defaults to 5, bounded to 15 per socket operation. `MAIL_MODE=disabled` prevents delivery. Configure these in the backend process environment; the local Compose configuration does not forward them automatically. No account/domain is provisioned or activated by this repository.
 
-The adapter sends verification, reset and workspace-invitation codes only, does not log message contents, and never automatically retries an uncertain SMTP send. Public auth requests keep their generic response on delivery failures; operators receive only a redacted outcome code. **This is not completed production email:** delivery is synchronous after the database commit, response timing may reveal eligibility, subsequent token requests invalidate older codes, and there is no durable delivery/reconciliation queue, recruitment/reminder transport, domain authentication or live deliverability evidence. Keep production rollout gated on the rest of C02; an SMTP server accepting a message does not prove inbox delivery.
+The adapter sends verification, reset and workspace-invitation codes only. Migration `025_auth_delivery` adds an auth-scoped durable outbox: production SMTP is dispatched by the enabled embedded runner, never from the public request. Outbox/job metadata contains no recipient or raw capability; live source and authority are rechecked before dispatch. Stable eligible resends retain the usable code. Only known pre-dispatch failures receive bounded automatic retries; an uncertain or abandoned dispatch is quarantined rather than automatically replayed. Privacy/erasure and restore hooks cancel or quarantine affected work, and the runner retains physical sends across cancellation/shutdown instead of overlapping retries. Local development delivery remains available without SMTP.
+
+Public recovery responses stay generic, with safe internal outcome codes and no message content in logs. **This is not full production email acceptance:** recruitment/reminder delivery, domain authentication, approved provider settings, timing/privacy acceptance and live deliverability remain. SMTP requires `JOB_RUNNER_ENABLED=true`; genuinely wedged physical sends can prolong shutdown under the single-process dispatch contract. An SMTP server accepting a message does not prove inbox delivery.
 
 Workspace roles are owner, admin, researcher, reviewer and viewer. Membership is always checked against active user/workspace status. Only owners can promote/demote owners or administrators; removing the final owner is rejected under a workspace lock. Study access additionally requires ownership or an explicit role-bounded study grant. Participant research capabilities remain P06/P07 work; they are not workspace staff roles.
 
@@ -172,7 +176,7 @@ Visit `http://localhost:8080`. Only this loopback frontend port is published. Th
 
 Backend readiness stays 503 until the explicit migration is applied. Startup performs no DDL and does not seed. Repeating the seed command preserves the same single synthetic fixture. On an existing setup, skip secret generation. Do not use `down -v` unless intentionally deleting all development data.
 
-The wrapper always uses the same environment file and base/development Compose pair, independently of your working directory. Run `scripts/dev up -d --build frontend` after changing frontend source; backend changes reload from a bind mount. The default React page is a connectivity diagnostic; authorized preview links open the P05 renderer. A complete researcher dashboard and production participant workflow are not implemented.
+The wrapper always uses the same environment file and base/development Compose pair, independently of your working directory. Run `scripts/dev up -d --build frontend` after changing frontend source; backend changes reload from a bind mount. The default React page provides registration, email-code verification/recovery, sign-in, login-session revocation and authorized workspace/study navigation. Reviewer assignments and existing participant schedules open without pasted bearer tokens. Credentials remain in memory; refreshing requires sign-in again. Authorized preview and collection links retain their separate capability flows. A complete study builder, researcher dashboard and production participant workflow are still in progress.
 
 ## Tests
 
@@ -185,6 +189,20 @@ The full guarded suite uses the separate `elseview_test` database. It migrates/r
 /Users/user/Workspace/startup-act/scripts/dev exec -T backend python -m pip check
 python3 /Users/user/Workspace/startup-act/scripts/validate_blueprint.py
 ```
+
+For isolated local validation without resetting an existing database, run:
+
+```sh
+backend/.venv/bin/python scripts/test_fresh.py -q tests/test_recruiting_targeting_db.py
+backend/.venv/bin/python scripts/test_fresh.py --with-cache -q
+backend/.venv/bin/python scripts/test_fresh.py --with-browser -q tests/test_live_account_browser.py
+```
+
+This requires Docker and the Compose-pinned PostgreSQL image already cached locally. It creates a uniquely named, loopback-only RAM-backed container with temporary credentials outside the repository, verifies readiness, migrates an empty test database, and removes only its own resources on exit. No existing database or volume is mounted. Cache/live-provider/load/browser tests are excluded by default **even when selectors or `-q` are supplied**; an explicit pytest `-m` can select an operator drill. `--with-cache` adds a fresh, authenticated, nonpersistent Valkey from the cached pinned image; inherited cache addresses are never used. `--with-browser` includes that cache and real browser/API/database journeys, requiring installed Chrome/Node and frontend dependencies; it builds the current frontend. Migration round trips use isolated child databases inside the disposable container.
+
+The live browser account fixture pre-provisions a verified synthetic identity, then exercises the built UI's real login, workspace creation/reload, assessment navigation and session revocation at desktop/mobile sizes. Its fixture route exists only in the test-created app, not in the shipped backend. This is not all ten end-to-end product stories or a human accessibility sign-off.
+
+`python -m app.test_runner --fresh` also supports an operator-provided **empty** dedicated test database and the same exact database-name guard. It refuses existing tables, views, enums, sequences or extra schemas; it never performs the fixture's initial downgrade. Do not use this flag to bypass ownership checks on shared databases.
 
 Plain pytest without the explicit DB guard runs unit/API tests and clearly skips real-DB cases. It is not equivalent to the full suite. Test fixtures deny external Python socket connections; guarded DB tests allow the selected test PostgreSQL address and explicitly cache-marked tests allow Valkey with isolated DB15 keys. No cloud call is implemented. This is a test safeguard, not a production egress firewall. Tests explicitly disable the app runner except isolated runner/lifespan tests.
 

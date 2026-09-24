@@ -165,6 +165,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app):
+        from app.auth.delivery import cleanup_local
+
+        cleanup_local(settings)
         app.state.started = True
         runner = None
         try:
@@ -178,9 +181,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         finally:
             if runner is not None:
                 await runner.stop()
+                await runner.drain_mail()
             app.state.cache.close()
             app.state.rate_limiter.close()
             database.close()
+            cleanup_local(settings)
             app.state.started = False
 
     app = FastAPI(

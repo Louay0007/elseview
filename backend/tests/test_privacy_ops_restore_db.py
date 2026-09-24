@@ -225,7 +225,7 @@ def test_actual_postgresql_snapshot_replays_latest_erasure(
         with Session(db_engine) as session:
             held_digest = export_tombstones(session, held_manifest, key)
         held_payload = json.loads(held_manifest.read_text())["manifest"]
-        assert held_payload["version"] == 3
+        assert held_payload["version"] == 4
         assert {"workspace_id": str(wid), "subject_id": str(uid)} in held_payload["holds"]
         marker = target_files / ".privacy-ready"
         marker.write_text("stale receipt must be removed on failure")

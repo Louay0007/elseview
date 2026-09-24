@@ -144,6 +144,10 @@ def matches(attributes, filters):
         "verified_languages", []
     ):
         return False
+    if filters.get("reviewed_language") and filters["reviewed_language"] not in attributes.get(
+        "reviewed_languages", []
+    ):
+        return False
     for key in ("country_id", "city_id"):
         if filters.get(key) is not None and attributes.get(key) != filters[key]:
             return False
@@ -188,6 +192,20 @@ def panel_update(session, user_id, body):
             fail("IDEMPOTENCY_CONFLICT", 409)
         return profile
     profile.status = "active" if body.decision == "granted" else "withdrawn"
+    if body.decision == "withdrawn":
+        from sqlalchemy import update
+
+        from app.collaboration.models import NotificationDelivery
+
+        session.execute(
+            update(NotificationDelivery)
+            .where(
+                NotificationDelivery.recipient_id == user_id,
+                NotificationDelivery.purpose == "recruitment_invite",
+                NotificationDelivery.state == "pending",
+            )
+            .values(state="cancelled", outcome="consent_changed")
+        )
     if body.decision == "granted" and has_targeting(attributes):
         attributes["_targeting_provenance"] = targeting_provenance(
             "self_reported",
@@ -401,7 +419,9 @@ def configure(session, workspace_id, user_id, launch_id, body):
     return config
 
 
-def source_attributes(session, workspace_id, kind, source_id):
+def source_attributes(
+    session, workspace_id, kind, source_id, *, require_targeting=False, include_reviewed=True
+):
     if kind == "public":
         profile = session.get(ParticipantProfile, source_id)
         if not profile or profile.status != "active":
@@ -420,6 +440,10 @@ def source_attributes(session, workspace_id, kind, source_id):
         )
         if not receipt or receipt.decision != "granted":
             fail("SOURCE_UNAVAILABLE", 409)
+        if (require_targeting or has_targeting(profile.attributes_json)) and (
+            receipt.document_version != "2" or receipt.document_digest != PANEL_TARGETING_DIGEST
+        ):
+            fail("TARGETING_CONSENT_REQUIRED", 403)
         attrs = deepcopy(profile.attributes_json)
         attrs["verified_languages"] = list(
             session.scalars(
@@ -430,6 +454,15 @@ def source_attributes(session, workspace_id, kind, source_id):
                 )
             )
         )
+        if include_reviewed:
+            from app.recruiting.assessments import current_qualifications
+
+            reviewed = current_qualifications(session, profile.id)
+            attrs["reviewed_languages"] = [q["language"] for q in reviewed]
+            attrs["_reviewed_qualification_provenance"] = [
+                {key: str(value) for key, value in qualification.items()}
+                for qualification in reviewed
+            ]
         return attrs, profile.user_id
     if kind != "private":
         fail("INVALID_SOURCE", 422)
@@ -453,7 +486,7 @@ def source_attributes(session, workspace_id, kind, source_id):
     return deepcopy(contact.attributes_json), None
 
 
-def issue_invitation(session, workspace_id, user_id, launch_id, body):
+def issue_invitation(session, workspace_id, user_id, launch_id, body, settings=None):
     manage_launch(session, workspace_id, user_id, launch_id)
     config = config_for(session, workspace_id, launch_id)
     attrs, subject = source_attributes(session, workspace_id, body.source_kind, body.source_id)
@@ -490,9 +523,16 @@ def issue_invitation(session, workspace_id, user_id, launch_id, body):
     )
     session.add(candidate)
     session.flush()
-    raw = new_secret()
+    from uuid import uuid4
+
+    from app.auth.outbox import capability
+
+    invitation_id = uuid4()
+    raw = capability(settings, "recruitment_invite", invitation_id) if settings else new_secret()
     invite = Invitation(
+        id=invitation_id,
         workspace_id=workspace_id,
+        issued_by=user_id,
         candidate_id=candidate.id,
         token_hash=token_hash(raw),
         expires_at=utcnow() + timedelta(seconds=body.expires_seconds),
@@ -515,7 +555,24 @@ def validate_source(session, candidate):
         require_unrestricted(session, candidate.workspace_id, candidate.subject_id)
     if candidate.status == "withdrawn" or candidate.source_id is None:
         fail("PARTICIPANT_WITHDRAWN", 403)
-    source_attributes(session, candidate.workspace_id, candidate.source_kind, candidate.source_id)
+    # Expiry does not undo earned participation. Revocation of the exact grant
+    # does fence reuse; a fresh assessment grant cannot revive this snapshot.
+    if candidate.source_kind == "public":
+        from uuid import UUID
+
+        from app.recruiting.assessments import require_grant
+
+        for provenance in candidate.attributes_json.get("_reviewed_qualification_provenance", []):
+            require_grant(session, candidate.source_id, UUID(provenance["consent_grant_id"]))
+    # A narrower re-opt-in cannot reauthorize targeting retained in an old snapshot.
+    source_attributes(
+        session,
+        candidate.workspace_id,
+        candidate.source_kind,
+        candidate.source_id,
+        require_targeting=has_targeting(candidate.attributes_json),
+        include_reviewed=False,
+    )
 
 
 def resolve_invitation(session, raw_token, *, redeem=False):
@@ -823,7 +880,9 @@ ASSESSMENTS = {
 }
 
 
-def assess_language(session, user_id, body):
+def assess_language(session, user_id, body, settings=None):
+    if settings is not None and settings.app_env == "production":
+        fail("LEGACY_ASSESSMENT_DISABLED", 403)
     session.scalar(select(User).where(User.id == user_id).with_for_update())
     profile = session.scalar(
         select(ParticipantProfile).where(ParticipantProfile.user_id == user_id)

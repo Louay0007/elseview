@@ -19,7 +19,11 @@ class JobRunner:
         self._stop = asyncio.Event()
         self._task = None
         self._handler = None
+        self._physical_handler = False
         self._quarantined = False
+        self._mail = None
+        self._prefer_mail = True
+        self._prefer_notification = False
 
     @staticmethod
     def _observe(task):
@@ -31,14 +35,14 @@ class JobRunner:
         task = self._handler
         if task is None:
             return True
-        if not task.done():
+        if not task.done() and not self._physical_handler:
             task.cancel()
             await asyncio.wait({task}, timeout=min(self.shutdown, 0.1))
         if task.done():
             self._observe(task)
             self._handler = None
             return True
-        # Python cannot forcibly stop a coroutine that suppresses cancellation.
+        # Python cannot stop a physical thread or a coroutine suppressing cancellation.
         # Permanently stop this worker, retain the lease, and observe its eventual exit.
         self._quarantined = True
         self._stop.set()
@@ -75,8 +79,13 @@ class JobRunner:
 
     async def _execute(self, job):
         handler = service.REGISTRY[job.kind][0]
+        self._physical_handler = job.kind == "privacy.erase"
         if job.kind == "privacy.erase":
             operation = asyncio.to_thread(handler, self.database, self.settings, job)
+        elif job.kind == "ai.step":
+            from app.ai.orchestration import execute
+
+            operation = execute(self.database, self.settings, job)
         elif job.kind == "ai.generate":
             from app.ai.service import execute
 
@@ -134,6 +143,65 @@ class JobRunner:
             if not self._quarantined:
                 await self._cancel_handler()
 
+    async def drain_mail(self):
+        """Observe physical work before closing DB; privacy threads also fence mail."""
+        tasks = [self._mail]
+        if self._physical_handler:
+            tasks.append(self._handler)
+        for task in tasks:
+            if task is not None:
+                try:
+                    await asyncio.shield(task)
+                except Exception:
+                    logger.error("Worker drain failed", extra={"event": "worker_drain_failed"})
+
+    def _send_next_mail(self):
+        from app.auth.outbox import dispatch_one as auth_mail
+        from app.collaboration.mail import dispatch_one as notification_mail
+
+        dispatchers = (
+            (notification_mail, auth_mail)
+            if self._prefer_notification
+            else (auth_mail, notification_mail)
+        )
+        self._prefer_notification = not self._prefer_notification
+        return any(dispatch(self.database, self.settings) for dispatch in dispatchers)
+
+    async def _dispatch_mail(self):
+        if not hasattr(self.settings, "mail_mode"):
+            return False
+
+        # Retain the entire synchronous dispatch, including claim and completion. Cancelling
+        # asyncio.to_thread's wrapper does NOT stop SMTP; never cancel this separate task.
+        self._mail = asyncio.create_task(
+            asyncio.to_thread(self._send_next_mail), name="auth-notification-mail"
+        )
+        self._mail.add_done_callback(self._observe)
+        try:
+            done, _ = await asyncio.wait({self._mail}, timeout=self.timeout)
+            if done:
+                return self._mail.result()
+        except asyncio.CancelledError:
+            self._quarantined = True
+            self._stop.set()
+            logger.warning("Mail worker quarantined", extra={"event": "auth_mail_quarantined"})
+            raise
+        self._quarantined = True
+        self._stop.set()
+        logger.warning("Mail worker quarantined", extra={"event": "auth_mail_quarantined"})
+        return True
+
+    async def _work(self):
+        prefer_mail = self._prefer_mail
+        self._prefer_mail = not prefer_mail
+        if prefer_mail and await self._dispatch_mail():
+            return
+        job = await self._db(service.claim, self.lease)
+        if job:
+            await self._execute(job)
+        elif not prefer_mail:
+            await self._dispatch_mail()
+
     async def _run(self):
         while not self._stop.is_set():
             try:
@@ -143,9 +211,8 @@ class JobRunner:
                 ready = engine is None or await asyncio.to_thread(
                     restore_ready, engine, self.settings.private_root
                 )
-                job = await self._db(service.claim, self.lease) if ready else None
-                if job:
-                    await self._execute(job)
+                if ready:
+                    await self._work()
             except asyncio.CancelledError:
                 raise
             except Exception:

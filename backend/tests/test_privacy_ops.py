@@ -34,7 +34,8 @@ def test_restore_requires_isolated_database_and_files(tmp_path):
 def test_manifest_requires_latest_signature_and_no_content(tmp_path):
     key = b"x" * 32
     manifest = {
-        "version": 3,
+        "version": 4,
+        "assessment_revocations": [],
         "holds": [],
         "contact_holds": [],
         "accounts": [],

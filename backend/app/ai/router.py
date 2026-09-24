@@ -53,6 +53,12 @@ def approve(workspace_id: UUID, run_id: UUID, request: Request, response: Respon
         run = get_scoped(session, AIRun, workspace_id, run_id)
         authorize(session, workspace_id, user.id, run.study_id, "edit")
         service.context(session, run)
+        from . import orchestration
+
+        if orchestration.is_graph(run):
+            orchestration.analysis_inputs.collect(session, run, user.id)
+            if run.state == "approved":
+                return service.view(session, workspace_id, user.id, run_id)
         if run.state != "draft":
             service.denied("AI_APPROVAL_STATE")
         run.state, run.approved_at = "approved", jobs.now(session)
@@ -71,3 +77,32 @@ def reconcile(
     guard(request, response, user)
     with request.app.state.database.sessions.begin() as session:
         return service.reconcile(session, workspace_id, user.id, run_id, body)
+
+
+@router.post("/runs/{run_id}/cancel")
+def cancel(workspace_id: UUID, run_id: UUID, request: Request, response: Response, user: Actor):
+    guard(request, response, user)
+    from . import orchestration
+
+    with request.app.state.database.sessions.begin() as session:
+        run = get_scoped(session, AIRun, workspace_id, run_id)
+        if not orchestration.is_graph(run):
+            service.denied("AI_REVISION_REQUIRED")
+        return orchestration.cancel(session, workspace_id, user.id, run_id)
+
+
+@router.post("/runs/{run_id}/attempts/{attempt_id}/reconcile")
+def reconcile_attempt(
+    workspace_id: UUID,
+    run_id: UUID,
+    attempt_id: UUID,
+    body: ReconcileBody,
+    request: Request,
+    response: Response,
+    user: Actor,
+):
+    guard(request, response, user)
+    from . import orchestration
+
+    with request.app.state.database.sessions.begin() as session:
+        return orchestration.reconcile(session, workspace_id, user.id, run_id, attempt_id, body)

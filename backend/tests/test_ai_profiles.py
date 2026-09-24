@@ -95,7 +95,18 @@ def test_plan_uses_actual_bounds_and_cost(settings, monkeypatch, depth):
 
 def test_default_request_and_legacy_cache_identity(settings, monkeypatch):
     request = body()
-    legacy = request.model_dump(mode="json", exclude={"command_key", "depth"})
+    legacy = request.model_dump(
+        mode="json",
+        exclude={
+            "command_key",
+            "depth",
+            "profile_revision",
+            "right_snapshot_id",
+            "plan_digest",
+            "max_reserved_cost",
+            "currency",
+        },
+    )
     assert service.request_identity(request) == adapter.digest(legacy)
     assert service.request_identity(request) != service.request_identity(
         request.model_copy(update={"depth": "quick"})
@@ -301,7 +312,11 @@ def test_creation_reserves_exact_estimate_and_persists_profile(
         settings,
         workspace.id,
         uuid4(),
-        EstimateBody(**request.model_dump(exclude={"command_key"})),
+        EstimateBody(
+            **request.model_dump(
+                exclude={"command_key", "plan_digest", "max_reserved_cost", "currency"}
+            )
+        ),
     )
     rows = []
 
@@ -360,7 +375,7 @@ def test_approved_cache_reuse_never_reserves_or_enqueues(settings, monkeypatch, 
     cached.cache_key = service.cache_identity(cached, prompt, legacy=legacy)
     if legacy:
         del cached.config["depth_profile"]
-    results = iter([None, cached])
+    results = iter([None, None, cached])
     queries = []
 
     def scalar(query):
@@ -408,7 +423,7 @@ def test_legacy_uncertain_cache_is_fenced_without_writes(settings, monkeypatch):
     monkeypatch.setattr(service, "lock_workspace", lambda *args: workspace)
     monkeypatch.setattr(service, "authorize", lambda *args: None)
     queries = []
-    results = iter([None, None, uuid4()])
+    results = iter([None, None, None, uuid4()])
 
     def scalar(query):
         queries.append(query)

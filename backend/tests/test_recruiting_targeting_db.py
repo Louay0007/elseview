@@ -20,6 +20,7 @@ from app.recruiting.models import (
     PrivateContact,
     QuotaCell,
     RecruitmentConfig,
+    Reservation,
     ReservationCell,
 )
 
@@ -73,6 +74,69 @@ def targeting_row(email):
         "city": "geonames:2464470",
         "work": json.dumps(EXPERIENCE),
     }
+
+
+@pytest.mark.parametrize("targeted", [True, False])
+@pytest.mark.parametrize("existing_hold", [True, False])
+def test_targeting_withdrawal_v1_rejoin_cannot_reauthorize_frozen_candidate(
+    recruitment, targeted, existing_hold
+):
+    client, app, actor, h, user, w, base, root, launch = recruitment
+    filters = {"country_id": "TN"} if targeted else {"min_age": 18}
+    configure(client, h, root, filters=filters, quotas=[{"capacity": 1, "filters": filters}])
+    ph, pu, _ = actor()
+    output, body = targeting_optin(client, ph, TARGETING if targeted else {"age": 30})
+    invitation = invite(client, h, root, output["id"])
+    token = {"X-Invitation-Token": invitation["invitation_token"]}
+    candidate_id = UUID(invitation["candidate_id"])
+    if existing_hold:
+        assert client.post("/api/v1/recruiting/reserve", headers=ph | token).status_code == 200
+    with app.state.database.sessions() as session:
+        frozen = session.get(Candidate, candidate_id).attributes_json
+    withdrawn = client.put(
+        "/api/v1/panel/profile",
+        headers=ph,
+        json=body
+        | {
+            "decision": "withdrawn",
+            "attributes": {},
+            "receipt_key": uuid4().hex,
+        },
+    )
+    assert withdrawn.status_code == 200, withdrawn.text
+    assert client.get("/api/v1/recruiting/invitation", headers=token).status_code == 409
+    legacy = body | {
+        "document_version": "1",
+        "presented_digest": service.PANEL_DIGEST,
+        "attributes": {},
+        "receipt_key": uuid4().hex,
+    }
+    assert client.put("/api/v1/panel/profile", headers=ph, json=legacy).status_code == 200
+    for response in [
+        client.get("/api/v1/recruiting/invitation", headers=token),
+        client.post("/api/v1/recruiting/reserve", headers=ph | token),
+    ]:
+        assert response.status_code == (403 if targeted else 200), response.text
+        if targeted:
+            assert response.json()["error"]["code"] == "TARGETING_CONSENT_REQUIRED"
+    with app.state.database.sessions() as session:
+        assert session.get(Candidate, candidate_id).attributes_json == frozen
+        if targeted:
+            assert session.scalar(
+                select(func.count())
+                .select_from(Reservation)
+                .where(Reservation.candidate_id == candidate_id)
+            ) == int(existing_hold)
+            if existing_hold:
+                from app.common.errors import DomainError
+
+                with pytest.raises(DomainError, match="TARGETING_CONSENT_REQUIRED"):
+                    service.validate_candidate(session, w, candidate_id)
+    # Fresh, applicable v2 authorization permits using the unchanged frozen snapshot.
+    targeting_optin(client, ph, {})
+    assert client.post("/api/v1/recruiting/reserve", headers=ph | token).status_code == 200
+    with app.state.database.sessions() as session:
+        assert session.get(Candidate, candidate_id).attributes_json == frozen
 
 
 def test_targeting_public_consent_replay_clear_and_persisted_provenance(recruitment):

@@ -102,7 +102,7 @@ class Export(Scoped, Base):
     __table_args__ = (
         scope("export"),
         fk("report_version_id", "report_versions"),
-        CheckConstraint("format IN ('json','csv')"),
+        CheckConstraint("format IN ('json','csv','pdf','xlsx')"),
         CheckConstraint("scope IN ('summary','raw')"),
         CheckConstraint("state IN ('ready','invalidated')"),
     )

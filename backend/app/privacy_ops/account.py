@@ -131,9 +131,15 @@ def apply_account_restriction(session, subject_id):
         return
     # Invitations addressed to this account are not linked by user FK. Scrub them
     # before losing the original email; affected_workspaces includes these scopes.
+    from app.auth.outbox import cancel_invites
+
+    invite_ids = select(WorkspaceInvite.id).where(
+        or_(WorkspaceInvite.email == user.email, WorkspaceInvite.invited_by == subject_id)
+    )
+    cancel_invites(session, invite_ids, "privacy_restricted")
     session.execute(
         update(WorkspaceInvite)
-        .where(WorkspaceInvite.email == user.email)
+        .where(WorkspaceInvite.id.in_(invite_ids))
         .values(email=f"erased-{user.id}@invalid.example", revoked_at=utcnow())
     )
     if user.status != "disabled" or user.password_hash != "!account-erased":
@@ -157,6 +163,12 @@ def apply_account_restriction(session, subject_id):
         profile.attributes_json = {}
         profile.status = "withdrawn"
         session.execute(delete(Qualification).where(Qualification.profile_id == profile.id))
+    from app.recruiting.assessment_privacy import purge_account
+
+    purge_account(session, subject_id)
+    from app.collaboration.mail import cancel_subject
+
+    cancel_subject(session, subject_id)
     session.flush()
 
 

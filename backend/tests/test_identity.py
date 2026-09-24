@@ -438,14 +438,14 @@ def test_verification_resend_workspace_list_and_session_revoke(auth_app):
         == 202
     )
     new = delivered[-1][2]
-    assert new != old
+    assert new == old  # Resend never invalidates an already delivered, valid link.
     assert (
         client.post("/api/v1/auth/verify-email", headers=ORIGIN, json={"token": old}).status_code
-        == 400
+        == 200
     )
     assert (
         client.post("/api/v1/auth/verify-email", headers=ORIGIN, json={"token": new}).status_code
-        == 200
+        == 400
     )
     response = client.post(
         "/api/v1/auth/login", headers=ORIGIN, json={"email": email, "password": PASSWORD}

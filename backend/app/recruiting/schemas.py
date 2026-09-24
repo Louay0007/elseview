@@ -1,8 +1,10 @@
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_serializer, model_validator
+
+from app.recruiting.assessment_schemas import Language
 
 
 class Strict(BaseModel):
@@ -72,6 +74,7 @@ class Filters(Targeting):
     device: Literal["mobile", "desktop", "tablet"] | None = None
     language: str | None = Field(default=None, max_length=35)
     verified_language: str | None = Field(default=None, max_length=35)
+    reviewed_language: Language | None = None
 
     @model_validator(mode="after")
     def compatible(self):
@@ -148,6 +151,37 @@ class InviteBody(BaseModel):
     source_kind: Literal["public", "private"]
     source_id: UUID
     expires_seconds: int = Field(default=86400, ge=60, le=604800)
+    delivery: Literal["manual", "email"] = "manual"
+
+
+class InvitationIdentity(BaseModel):
+    invitation_id: UUID
+    candidate_id: UUID
+    expires_at: datetime
+
+    @field_serializer("expires_at", when_used="json")
+    def serialize_expiry(self, value: datetime) -> str:
+        # Preserve the timestamp spelling used before response-model validation.
+        return value.isoformat()
+
+
+class ManualRecruitmentInvitation(InvitationIdentity):
+    delivery: Literal["manual"]
+    invitation_token: str
+
+
+class QueuedRecruitmentInvitation(InvitationIdentity):
+    delivery: Literal["queued"]
+    invitation_token: None
+
+
+type RecruitmentInvitationResponse = Annotated[
+    ManualRecruitmentInvitation | QueuedRecruitmentInvitation, Field(discriminator="delivery")
+]
+
+
+class InvitationDeliveryResponse(BaseModel):
+    status: Literal["queued"]
 
 
 class ScreenBody(BaseModel):

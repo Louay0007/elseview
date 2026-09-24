@@ -59,7 +59,8 @@ def apply_event(session, workspace_id, action, resource_id, storage=None):
         return apply_lifecycle_event(session, workspace_id, action, resource_id, storage=storage)
     if action == "consent_revoke":
         return apply_consent_event(session, workspace_id, action, resource_id)
-    from app.ai.models import AIEvidence, AIRun
+    from app.ai.models import AIRun
+    from app.ai.service import affected_snapshots
     from app.analytics.models import (
         AnalysisSnapshot,
         Export,
@@ -111,9 +112,7 @@ def apply_event(session, workspace_id, action, resource_id, storage=None):
             SnapshotSource.workspace_id == workspace_id, SnapshotSource.session_id == row.id
         )
         for run in session.scalars(
-            select(AIRun).where(
-                AIRun.workspace_id == workspace_id, AIRun.snapshot_id.in_(snapshots)
-            )
+            select(AIRun).where(AIRun.workspace_id == workspace_id, affected_snapshots(snapshots))
         ).all():
             apply_event(session, workspace_id, "ai_delete", run.id)
             run.snapshot_id = None
@@ -127,14 +126,14 @@ def apply_event(session, workspace_id, action, resource_id, storage=None):
         row.assignments, row.submitted_snapshot = {}, None
         row.quality_summary, row.consent_receipt_id = None, None
     elif action == "ai_delete":
-        from app.billing.service import release_ai_addon
+        from app.ai.service import _invalidate_runs
 
-        release_ai_addon(session, workspace_id, row.id)
-        row.state, row.output, row.instruction, row.coverage = "invalidated", None, "", {}
-        session.execute(delete(AIEvidence).where(AIEvidence.run_id == row.id))
+        _invalidate_runs(session, workspace_id, [row])
     elif action == "snapshot_delete":
+        row.state = "invalidated"
+        session.flush()
         for run in session.scalars(
-            select(AIRun).where(AIRun.workspace_id == workspace_id, AIRun.snapshot_id == row.id)
+            select(AIRun).where(AIRun.workspace_id == workspace_id, affected_snapshots([row.id]))
         ).all():
             apply_event(session, workspace_id, "ai_delete", run.id)
             run.snapshot_id = None

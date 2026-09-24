@@ -18,6 +18,27 @@ test('204, JSON, malformed success and non-JSON errors', async () => {
   await assert.rejects(createApiClient({ fetchImpl: async () => new Response('bad') })('/x'), error => error.code === 'INVALID_RESPONSE');
   await assert.rejects(createApiClient({ fetchImpl: async () => new Response('private error', { status: 500 }) })('/x'), error => error.message === 'Request failed (500).');
 });
+test('explicit CSRF header is sent without persisting credentials or retrying', async () => {
+  let calls = 0;
+  const api = createApiClient({ fetchImpl: async (url, options) => {
+    calls++;
+    assert.equal(url, '/api/v1/auth/refresh');
+    assert.equal(options.headers['X-CSRF-Token'], 'synthetic-csrf');
+    assert.equal(options.credentials, 'same-origin');
+    assert.equal(options.body, undefined);
+    return new Response(null, { status: 204 });
+  } });
+  assert.equal(await api('/auth/refresh', { method: 'POST', csrfToken: 'synthetic-csrf' }), null);
+  assert.equal(calls, 1);
+});
+test('authorized binary responses remain unread while errors retain canonical handling', async () => {
+  const response = new Response(new Uint8Array([1, 2, 3]), { headers: { 'Content-Type': 'image/png' } });
+  const api = createApiClient({ fetchImpl: async () => response });
+  assert.equal(await api('/image', { rawResponse: true }), response);
+  assert.equal(response.bodyUsed, false);
+  assert.deepEqual(new Uint8Array(await response.arrayBuffer()), new Uint8Array([1, 2, 3]));
+  await assert.rejects(createApiClient({ fetchImpl: async () => new Response('{}', { status: 403 }) })('/image', { rawResponse: true }), error => error.status === 403);
+});
 test('abort remains distinguishable', async () => {
   const error = new DOMException('Aborted', 'AbortError');
   await assert.rejects(createApiClient({ fetchImpl: async () => { throw error; } })('/x'), candidate => candidate === error);

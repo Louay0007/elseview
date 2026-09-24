@@ -25,6 +25,7 @@ REGISTRY = {
     "privacy.erase": (erase_files, True),
     "collection.quality": (system_check, True),
     "ai.generate": (system_check, False),
+    "ai.step": (system_check, True),
     "longitudinal.reminder": (system_check, True),
     "collaboration.webhook": (system_check, True),
 }
@@ -36,6 +37,10 @@ def now(session):
 
 
 def _authority(session, job):
+    if job.kind == "ai.step":
+        from app.ai.orchestration import authorize_job
+
+        return authorize_job(session, job)
     if job.kind == "collaboration.webhook":
         from app.collaboration.webhooks import authorize_job
 
@@ -104,6 +109,7 @@ def enqueue(
         "privacy.erase",
         "collection.quality",
         "ai.generate",
+        "ai.step",
         "longitudinal.reminder",
         "collaboration.webhook",
     }:
@@ -184,6 +190,10 @@ def _finish_attempt(session, job, outcome, error=None):
 
 
 def _end(session, job, state, error=None):
+    if job.kind == "ai.step" and state != "succeeded":
+        from app.ai.orchestration import end_job
+
+        state = end_job(session, job, state, error)
     if job.kind == "collaboration.webhook":
         from app.collaboration.webhooks import finish_delivery
 

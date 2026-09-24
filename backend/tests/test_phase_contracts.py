@@ -1,6 +1,5 @@
 import asyncio
 import hashlib
-import os
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -365,8 +364,8 @@ def test_human_only_policy_denies_ai(phase_scope, db_engine):
         service.authorize(session, workspace_id, user_id, UUID(fixture["study_id"]), "ai")
 
 
-def test_new_migrations_round_trip_on_guarded_database(db_engine, monkeypatch):
-    monkeypatch.setenv("MIGRATION_DATABASE_URL", os.environ["TEST_DATABASE_URL"])
+def test_new_migrations_round_trip_on_guarded_database(migration_engine):
+    db_engine = migration_engine
     configuration = Config(str(Path(__file__).parents[1] / "alembic.ini"))
     command.downgrade(configuration, "003_jobs")
     with db_engine.connect() as connection:

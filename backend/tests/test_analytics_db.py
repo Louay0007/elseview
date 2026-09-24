@@ -5,7 +5,7 @@ from uuid import UUID
 import pytest
 from sqlalchemy import func, select, text
 from sqlalchemy.exc import DBAPIError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 from test_collection_db import put
 from test_reviews_db import collected as collected_fixture
 
@@ -102,7 +102,7 @@ def test_live_withdrawal_without_epoch_invalidates_every_access(collected, db_en
             lambda: service.snapshot_view(session, row.workspace_id, actor, snapshot.id),
             lambda: service.source_access_summary(session, row.workspace_id, actor, snapshot.id),
             lambda: service.report_view(session, row.workspace_id, actor, report_id),
-            lambda: service.download_export(session, row.workspace_id, actor, UUID(export["id"])),
+            lambda: service.capture_export(session, row.workspace_id, actor, UUID(export["id"])),
             lambda: service.read_share(session, share["token"]),
         ):
             with pytest.raises(DomainError):
@@ -156,16 +156,19 @@ def test_accepted_snapshot_revision_digest_exports_review_drift(reviewed_analyti
         rid = UUID(report["id"])
         service.approve(session, wid, owner, rid, 1)
         export = service.create_export(session, wid, owner, rid, "json", "raw")
-        content, kind = service.download_export(session, wid, owner, UUID(export["id"]))
-        assert kind == "application/json" and "option_id" in content
-        assert str(subject) not in content
+    sessions = sessionmaker(db_engine)
+    content, kind = service.download_export(sessions, wid, owner, UUID(export["id"]))
+    assert kind == "application/json" and "option_id" in content
+    assert str(subject) not in content
+    with sessions.begin() as session:
         with pytest.raises(DomainError):
             service.create_export(session, wid, reviewers[0], rid, "json", "raw")
         share = service.create_share(session, wid, owner, rid, 60)
         assert "option_id" not in str(service.read_share(session, share["token"]))
         service.invalidate_session(session, wid, sid)
-        with pytest.raises(DomainError):
-            service.download_export(session, wid, owner, UUID(export["id"]))
+    with pytest.raises(DomainError):
+        service.download_export(sessions, wid, owner, UUID(export["id"]))
+    with sessions.begin() as session:
         with pytest.raises(DomainError):
             service.read_share(session, share["token"])
 

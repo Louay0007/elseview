@@ -6,6 +6,7 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Literal
 from urllib.parse import urlsplit
+from uuid import UUID
 
 from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -28,10 +29,15 @@ class Settings(BaseSettings):
     smtp_sender: str = Field(default="", max_length=254)
     smtp_timeout_seconds: float = Field(default=5, gt=0, le=15)
     smtp_delivery_approved: bool = False
+    language_assessment_authority_workspace_id: UUID | None = None
+    language_assessment_reviewers: dict[
+        UUID, list[Literal["tunisianArabic", "formalArabic", "french", "arabizi"]]
+    ] = Field(default_factory=dict)
     collaboration_integration_mode: Literal["disabled", "mock", "live"] = "disabled"
     collaboration_webhook_destinations: list[str] = []
     collaboration_webhook_secret: SecretStr = SecretStr("")
     collaboration_webhook_timeout_seconds: float = Field(default=3, gt=0, le=30)
+    ai_orchestration_enabled: bool = False
     llm_base_url: str = ""
     llm_api_key: SecretStr = SecretStr("")
     llm_model: str = "mock-v1"
@@ -141,14 +147,17 @@ class Settings(BaseSettings):
                 valid_sender = False
             if not (
                 self.smtp_delivery_approved
+                and self.job_runner_enabled
                 and self.app_env == "production"
                 and re.fullmatch(r"[a-zA-Z0-9](?:[a-zA-Z0-9.-]*[a-zA-Z0-9])?", self.smtp_host)
                 and valid_sender
                 and self.smtp_username.get_secret_value()
                 and self.smtp_password.get_secret_value()
+                and self.smtp_username.get_secret_value().isascii()
+                and self.smtp_password.get_secret_value().isascii()
             ):
                 raise ValueError(
-                    "SMTP requires production mode, approved delivery, a host, sender and credentials"
+                    "SMTP requires production mode, enabled job runner, approved delivery, host, sender and credentials"
                 )
         if self.collaboration_integration_mode != "disabled" and (
             not self.collaboration_webhook_destinations
@@ -263,6 +272,7 @@ def load_settings() -> Settings:
     permitted_controls = {
         "TEST_ALLOW_RESET",
         "TEST_ALLOW_DB",
+        "TEST_DATABASE_MODE",
         "DB_ADMIN_PASSWORD",
         "DB_OWNER_PASSWORD",
         "DB_APP_PASSWORD",

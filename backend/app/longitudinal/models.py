@@ -88,7 +88,10 @@ class DiaryOccurrence(Scoped, Base):
 
 class Notification(Scoped, Base):
     __tablename__ = "notifications"
-    __table_args__ = (UniqueConstraint("booking_id", "booking_revision"),)
+    __table_args__ = (
+        UniqueConstraint("booking_id", "booking_revision"),
+        UniqueConstraint("workspace_id", "id"),
+    )
     booking_id: Mapped[UUID] = mapped_column(ForeignKey("bookings.id"))
     booking_revision: Mapped[int]
     job_id: Mapped[UUID | None] = mapped_column(ForeignKey("jobs.id"))

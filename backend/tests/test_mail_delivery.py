@@ -1,8 +1,9 @@
 import smtplib
+from smtplib import SMTP as StdlibSMTP
 from unittest.mock import Mock
 
 import pytest
-from pydantic import ValidationError
+from pydantic import SecretStr, ValidationError
 
 from app.auth.delivery import deliver
 from app.common.errors import DomainError
@@ -21,6 +22,7 @@ def smtp_settings(settings, **changes):
         smtp_username="synthetic-user",
         smtp_password="synthetic-password",
         smtp_delivery_approved=True,
+        job_runner_enabled=True,
     )
     values.update(changes)
     return Settings(**values)
@@ -52,7 +54,7 @@ def test_disabled_mode_never_sends(settings, transport):
     transport[1].assert_not_called()
 
 
-@pytest.mark.parametrize("purpose", ["verify", "reset", "workspace_invite"])
+@pytest.mark.parametrize("purpose", ["verify", "reset", "workspace_invite", "recruitment_invite"])
 @pytest.mark.parametrize("tls", ["implicit", "starttls"])
 def test_tls_send_has_explicit_single_recipient(settings, transport, purpose, tls):
     config = smtp_settings(settings, smtp_tls=tls)
@@ -85,12 +87,15 @@ def test_tls_send_has_explicit_single_recipient(settings, transport, purpose, tl
 @pytest.mark.parametrize(
     "changes",
     [
+        {"job_runner_enabled": False},
         {"smtp_delivery_approved": False},
         {"smtp_host": "https://smtp.example.test"},
         {"smtp_host": "smtp.example.test\n"},
         {"smtp_sender": "bad\r\nBcc: other@example.test"},
         {"smtp_sender": ""},
         {"smtp_password": ""},
+        {"smtp_username": "synthetic-é"},
+        {"smtp_password": "synthetic-é"},
         {"smtp_tls": "none"},
         {"smtp_timeout_seconds": 0},
         {"smtp_timeout_seconds": 20},
@@ -124,6 +129,8 @@ def test_smtp_credentials_are_redacted(settings):
         ("synthetic@example.test", "unknown", "code"),
         ("synthetic@example.test", "verify", "code\r\ncontent"),
         ("synthetic@example.test", "verify", ""),
+        ("synthetic@example.test", "interview_reminder", "unexpected-code"),
+        ("synthetic@example.test", "diary_reminder", "unexpected-code"),
     ],
 )
 def test_bad_delivery_never_connects(settings, transport, email, purpose, token):
@@ -164,6 +171,26 @@ def test_authentication_failure_does_not_dispatch(settings, transport):
     transport[0].send_message.assert_not_called()
 
 
+def test_stdlib_auth_encoding_failure_is_known_predispatch(settings, transport):
+    from app.auth.outbox import send_outcome
+
+    config = smtp_settings(settings)
+    # Defense in depth if an embedding caller mutates previously validated settings.
+    config.smtp_password = SecretStr("synthetic-é")
+    smtp = StdlibSMTP(local_hostname="synthetic.invalid")
+    smtp.ehlo_resp = b"ready"
+    smtp.esmtp_features = {"auth": "PLAIN"}
+    transport[0].login.side_effect = smtp.login
+    assert (
+        send_outcome(
+            lambda *args: deliver(config, *args), "eligible@example.test", "reset", "synthetic-code"
+        )
+        == "DELIVERY_UNAVAILABLE"
+    )
+    transport[0].login.assert_called_once()
+    transport[0].send_message.assert_not_called()
+
+
 def test_no_starttls_downgrade(settings, transport):
     transport[0].starttls.side_effect = smtplib.SMTPNotSupportedError("private")
     with pytest.raises(DomainError):
@@ -184,23 +211,24 @@ def test_cleanup_failure_does_not_retry_accepted_mail(settings, transport):
     "code", ["DELIVERY_UNAVAILABLE", "DELIVERY_REJECTED", "DELIVERY_UNCERTAIN"]
 )
 def test_public_instruction_failure_hides_recipient_and_capability(settings, caplog, code):
-    from app.auth.service import AuthService
+    from app.auth.outbox import send_outcome
 
     sender = Mock(side_effect=DomainError(code, "private provider detail", 503))
-    auth = AuthService(None, settings, sender)
-    auth._deliver_instructions("synthetic@example.test", "reset", "synthetic-code")
+    assert send_outcome(sender, "synthetic@example.test", "reset", "synthetic-code") == code
     sender.assert_called_once_with("synthetic@example.test", "reset", "synthetic-code")
-    assert code in caplog.text
+    assert not caplog.text
     for private in ("private provider detail", "synthetic@example.test", "synthetic-code"):
         assert private not in caplog.text
 
 
-def test_public_instruction_does_not_swallow_unrelated_failures(settings):
-    from app.auth.service import AuthService
+def test_unclassified_delivery_failure_is_uncertain(settings):
+    from app.auth.outbox import send_outcome
 
-    auth = AuthService(None, settings, Mock(side_effect=DomainError("UNEXPECTED", "error", 500)))
-    with pytest.raises(DomainError, match="UNEXPECTED"):
-        auth._deliver_instructions("synthetic@example.test", "reset", "synthetic-code")
+    sender = Mock(side_effect=DomainError("UNEXPECTED", "private error", 500))
+    assert (
+        send_outcome(sender, "synthetic@example.test", "reset", "synthetic-code")
+        == "DELIVERY_UNCERTAIN"
+    )
 
 
 def test_smtp_setting_typo_is_rejected(monkeypatch):

@@ -13,7 +13,7 @@ from email.utils import parsedate_to_datetime
 import httpx2
 from openai import APIConnectionError, APIStatusError, AsyncOpenAI
 
-from .schemas import Draft
+from .schemas import ComparisonDraft, Draft
 
 PROMPT_VERSION = "1"
 SCHEMA_VERSION = "1"
@@ -245,7 +245,11 @@ async def generate(settings, prompt):
                 "json_schema": {
                     "name": "research_draft",
                     "strict": True,
-                    "schema": Draft.model_json_schema(),
+                    "schema": (
+                        ComparisonDraft
+                        if prompt[0]["content"].startswith("REVISION2_COMPARISON")
+                        else Draft
+                    ).model_json_schema(),
                 },
             }
         elif settings.llm_supports_json_object:

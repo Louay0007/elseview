@@ -41,6 +41,27 @@ The guarded suite passed 278 tests with zero skips. The following physical model
 
 Method contracts are parameterized in `test_each_method_config_answer_and_reducer`, `test_invalid_values`, `test_method_event_contracts`, and both-locale `test_all_core_methods_preview_no_side_effects`. Branch, unsupported-renderer, source-revocation and external-prototype authorization cases are separate. Actual browser checks are recorded in the phase log; they do not certify full cross-browser accessibility, production timing or P07 collection behavior.
 
+## Current verified physical additions and changed invariants (018–028)
+
+This supplements the historical phase map; an altered guard/JSON contract is not a new physical table. Refer to `IMPLEMENTATION_STATUS.md` for executed counts, not the historical totals below.
+
+| Revision | Physical model or change | Current regression evidence and boundary |
+|---|---|---|
+| 018 | `billing_usage.included_allocation` | `test_billing_db.py`; deterministic allowance recycling, historical prices and immutable ledger preserved |
+| 019 | `privacy_restore_events` | `test_privacy_audit.py`, `test_privacy_ops_restore_db.py`, `test_privacy_backup.py`; resource-scoped revocation replay, no global reinterpretation |
+| 020 | `evaluation_raw_exposures`; `evaluation_assignments.independence_checked` | `test_evaluation_db.py`; first raw disclosure and fail-closed legacy independence, not retrospective blindness certification |
+| 021 | `privacy_contact_holds`; lifecycle/replay guards | `test_privacy_lifecycle.py`; unlinked-contact holds and source minimization without reviving erased producers |
+| 022 | `privacy_account_erasures` | `test_account_erasure.py`; authenticated global erasure, retained status capability and financial/ownership fences |
+| 023 | Existing `exports` format constraint | `test_report_exports.py`, `test_report_exports_db.py`; real PDF/XLSX, formula-safe data, bounded private rendering outside workspace transactions and final source/permission recheck |
+| 024 | Existing `interaction_attempts` preparation/start fields and guards | `test_exposure_preparation.py`, `test_exposure_preparation_db.py`, `test_exposure_migration.py`; one-shot preparation/decode/start/interruption, legacy compatibility and populated downgrade refusal |
+| 025 | `auth_deliveries` | `test_auth_outbox.py`, `test_auth_mail_runner.py`, `test_auth_mail_privacy.py`; source-bound durable delivery, safe pre-dispatch retry, unknown-send quarantine and restore cancellation; no recipient/raw capability in generic metadata |
+| 026 | `language_assessment_versions`, `language_assessment_keys`, `language_assessment_consents`, `language_assessment_attempts`, `language_assessment_decisions` | `test_language_assessments*.py`, `test_language_assessment_consents_db.py`; private material, independent approval/adjudication/appeals, attempts/cooldowns/expiry, all retained own grants, withdrawal/erasure/manifest-v4 replay and exact frozen recruitment qualification provenance |
+| 027 | Existing `collection_sessions` capability guard | `test_diary_recovery.py`, `test_diary_recovery_db.py`, `test_diary_recovery_migration.py`; owner-only active-diary rotation, post-lock token recheck, same-token replay, stale different-token conflict, preserved answers/accounting and lossless rollback |
+
+| 028 | `notification_deliveries`; email opt-in and stable source-delivery metadata | `test_notification_delivery.py`, `test_notification_reminders.py`, `test_notification_runner.py`, `test_notification_restore.py`; current recipient/source/issuer authority, explicit reminders opt-in, stable recruitment resend, no-recipient/no-capability metadata, physical-send fence, uncertainty quarantine and restored-pending suppression |
+
+Targeting fields use existing profile/contact/snapshot structured data, not extra tables. AI depth uses existing run configuration/cache identity; revision-1 profiles remain **single-call**, not persisted multichunk execution. PDF/XLSX are bounded stateless downloads rather than durable filesystem artifacts. Authenticated diary recovery never creates a replacement response, reservation or reward. Assessment consent/attempt access is own-subject; research-operator private keys are a separate projection. Participant history is now a no-new-table, own-subject projection over existing collection sessions/reviews/appeals/rewards/payment transactions/bookings; `test_participant_history.py` and `test_participant_history_db.py` cover bounded pagination, foreign scope, source withdrawal and legally retained financial reads. It is not a cross-client reputation producer. Report indexing likewise projects existing immutable report versions with current source/privacy/summary permissions (`test_report_index*.py`). Revision-2 AI physical models and the remaining unimplemented producer contracts are still in progress.
+
 ## 1. Universal tests for every implemented model
 
 - **D01:** valid creation and round-trip, defaults, nullability and schema.

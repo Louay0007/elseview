@@ -137,6 +137,42 @@ def test_http_independence_adjudication_reviewed_export(evaluation):
     )
 
 
+def test_assignment_navigation_pagination_and_current_authority(evaluation, db_engine):
+    client, root, _, _, wid, sid, reviewers, _, _ = evaluation
+    assignment_id = assign_api(evaluation, 0)
+    headers = reviewers[0][0]
+    first = client.get(root + "/assignments?limit=1", headers=headers)
+    assert first.status_code == 200
+    assert first.json()["items"][0]["id"] == assignment_id
+    assert first.json()["has_more"] is True
+    end = client.get(root + "/assignments?limit=1&offset=1", headers=headers)
+    assert end.json()["items"] == [] and end.json()["has_more"] is False
+    with Session(db_engine) as session, session.begin():
+        member = session.scalar(
+            select(Membership).where(
+                Membership.workspace_id == wid, Membership.user_id == reviewers[0][1]
+            )
+        )
+        grant = session.scalar(
+            select(StudyGrant).where(
+                StudyGrant.workspace_id == wid,
+                StudyGrant.study_id == sid,
+                StudyGrant.membership_id == member.id,
+            )
+        )
+        from app.auth.security import utcnow
+
+        grant.revoked_at = utcnow()
+    revoked = client.get(root + "/assignments?limit=1", headers=headers)
+    assert revoked.status_code == 200
+    assert revoked.json()["items"] == []
+    assert revoked.json()["has_more"] is True
+    assert client.get(root + f"/assignments/{assignment_id}", headers=headers).status_code in (
+        403,
+        404,
+    )
+
+
 def test_source_partition_dedupe_across_versions_and_uuids(evaluation):
     client, root, h, _, _, _, _, ds, body = evaluation
     body["version"] = 2

@@ -7,6 +7,7 @@ No raw response copies are retained in reports or exports.
 import json
 import secrets
 from collections import Counter
+from dataclasses import dataclass, field
 from datetime import timedelta
 from uuid import UUID
 
@@ -14,6 +15,7 @@ from sqlalchemy import delete, select
 
 from app.auth.models import Membership, User
 from app.auth.security import utcnow
+from app.auth.service import require_workspace
 from app.collection.models import AnswerRevision, CollectionSession
 from app.common.errors import DomainError
 from app.common.privacy import (
@@ -25,9 +27,10 @@ from app.common.privacy import (
 )
 from app.common.privacy_models import ConsentReceipt
 from app.studies import methods
-from app.studies.models import Study, StudyVersion
+from app.studies.models import Study, StudyGrant, StudyVersion
 from app.studies.service import authorize, version_for
 
+from .exports import MAX_INPUT_BYTES, MEDIA_TYPES, ExportLimit, encode_document, generate_document
 from .metrics import (
     MIN_GROUP,
     VERSION,
@@ -40,6 +43,8 @@ from .metrics import (
 from .models import AnalysisSnapshot, Export, Report, ReportShare, ReportVersion, SnapshotSource
 
 MAX_SOURCES = 1000
+MAX_REPORT_INDEX_CANDIDATES = 1000
+MAX_REPORT_INDEX_SOURCE_CHECKS = 10000
 
 
 def unavailable():
@@ -425,6 +430,77 @@ def report_access(session, workspace_id, actor_id, report_id, capability="read",
     return report, rv, snapshot, sources
 
 
+def list_reports(session, workspace_id, actor_id, limit=25, offset=0):
+    """Paginate lawful metadata, not raw candidates or source/evidence counts.
+
+    Stable creation-order pagination counts only currently eligible reports. A
+    request inspects at most 1,000 authorized candidates / 10,000 source references;
+    budget exhaustion fails closed instead of returning a truncated page or an
+    unverified has_more flag. Live eligibility changes may shift later offsets.
+    """
+    if not 1 <= limit <= 100 or not 0 <= offset <= 10000:
+        raise DomainError("INVALID_PAGINATION", "Report pagination is out of bounds.", 422)
+    lock_workspace(session, workspace_id)
+    member = require_workspace(session, actor_id, workspace_id, "workspace.read")
+    require_unrestricted(session, workspace_id, actor_id)
+    granted = select(StudyGrant.study_id).where(
+        StudyGrant.workspace_id == workspace_id,
+        StudyGrant.membership_id == member.id,
+        StudyGrant.revoked_at.is_(None),
+        StudyGrant.capabilities.contains(["read"]),
+    )
+    candidates = session.execute(
+        select(Report.id, AnalysisSnapshot.source_count)
+        .join(Study, (Study.workspace_id == Report.workspace_id) & (Study.id == Report.study_id))
+        .join(
+            ReportVersion,
+            (ReportVersion.workspace_id == Report.workspace_id)
+            & (ReportVersion.report_id == Report.id)
+            & (ReportVersion.number == Report.revision),
+        )
+        .join(
+            AnalysisSnapshot,
+            (AnalysisSnapshot.workspace_id == Report.workspace_id)
+            & (AnalysisSnapshot.id == ReportVersion.snapshot_id),
+        )
+        .where(
+            Report.workspace_id == workspace_id,
+            (Study.owner_membership_id == member.id) | Study.id.in_(granted),
+            ReportVersion.state != "invalidated",
+            AnalysisSnapshot.state == "ready",
+        )
+        .order_by(Report.created_at, Report.id)
+        .limit(MAX_REPORT_INDEX_CANDIDATES + 1)
+    ).all()
+    items, eligible, source_checks = [], 0, 0
+    for index, (report_id, source_count) in enumerate(candidates):
+        source_checks += source_count
+        if index >= MAX_REPORT_INDEX_CANDIDATES or source_checks > MAX_REPORT_INDEX_SOURCE_CHECKS:
+            raise DomainError(
+                "REPORT_INDEX_LIMIT",
+                "Report listing exceeds privacy-check limits. Request an earlier or smaller page.",
+                422,
+            )
+        try:
+            report, version, _, _ = report_access(session, workspace_id, actor_id, report_id)
+        except DomainError as error:
+            if error.code not in {
+                "NOT_FOUND",
+                "FORBIDDEN",
+                "PRIVACY_RESTRICTED",
+                "ANALYSIS_UNAVAILABLE",
+            }:
+                raise
+            continue
+        eligible += 1
+        if eligible <= offset:
+            continue
+        items.append({"id": str(report.id), "revision": version.number, "state": version.state})
+        if len(items) > limit:
+            return {"items": items[:limit], "has_more": True}
+    return {"items": items, "has_more": False}
+
+
 def report_view(session, workspace_id, actor_id, report_id, number=None):
     report, rv, snapshot, _ = report_access(
         session, workspace_id, actor_id, report_id, number=number
@@ -577,9 +653,9 @@ def revoke_share(session, workspace_id, actor_id, share_id):
 
 def create_export(session, workspace_id, actor_id, report_id, format, scope):
     _, rv, _, _ = report_access(session, workspace_id, actor_id, report_id, "export")
-    if format not in {"json", "csv"} or scope not in {"raw", "summary"}:
+    if format not in MEDIA_TYPES or scope not in {"raw", "summary"}:
         raise DomainError(
-            "INVALID_EXPORT", "Only CSV and JSON summary/raw exports are supported.", 422
+            "INVALID_EXPORT", "Only JSON, CSV, PDF and XLSX summary/raw exports are supported.", 422
         )
     if scope == "raw":
         report_access(session, workspace_id, actor_id, report_id, "raw")
@@ -589,8 +665,16 @@ def create_export(session, workspace_id, actor_id, report_id, format, scope):
     return {"id": str(item.id), "format": item.format, "scope": item.scope}
 
 
-def download_export(session, workspace_id, actor_id, export_id):
-    lock_workspace(session, workspace_id)
+@dataclass(frozen=True, slots=True)
+class ExportCapture:
+    format: str
+    payload: bytes = field(repr=False)
+    binding: str
+
+
+def capture_export(session, workspace_id, actor_id, export_id):
+    """Authorize and detach inputs while holding the short-lived privacy gate."""
+    workspace = lock_workspace(session, workspace_id)
     item = get_scoped(session, Export, workspace_id, export_id)
     rv = get_scoped(session, ReportVersion, workspace_id, item.report_version_id)
     _, _, snapshot, sources = report_access(
@@ -603,17 +687,85 @@ def download_export(session, workspace_id, actor_id, export_id):
         authorize(session, workspace_id, actor_id, snapshot.study_id, "raw")
         data["metrics"] = snapshot.metrics
         data["responses"] = []
+        response_bytes = 0
         for source in sources:
             if source.exclusion_reason == "included":
                 row = get_scoped(session, CollectionSession, workspace_id, source.session_id)
                 _, values = final_revisions(session, row)
-                data["responses"].append({"source_id": str(source.id), "answers": values})
-    return (
-        json.dumps(data, ensure_ascii=False, allow_nan=False, sort_keys=True)
-        if item.format == "json"
-        else csv_document(data),
-        "application/json" if item.format == "json" else "text/csv",
+                response = {"source_id": str(source.id), "answers": values}
+                if item.format in {"pdf", "xlsx"}:
+                    try:
+                        response_bytes += len(encode_document(response)) + 2
+                        if response_bytes > MAX_INPUT_BYTES:
+                            raise ExportLimit
+                    except (ExportLimit, ValueError, RecursionError, OverflowError) as exc:
+                        raise DomainError(
+                            "EXPORT_TOO_LARGE",
+                            "Report exceeds document export limits. Use JSON or CSV.",
+                            413,
+                        ) from exc
+                data["responses"].append(response)
+    if item.format in {"pdf", "xlsx"}:
+        data["report"] = {
+            "revision": rv.number,
+            "state": rv.state,
+            "snapshot_id": str(snapshot.id),
+            "definition_digest": snapshot.definition_digest,
+            "manifest_digest": snapshot.manifest_digest,
+            "scope": item.scope,
+        }
+        try:
+            payload = encode_document(data)
+        except (ExportLimit, ValueError, RecursionError, OverflowError) as exc:
+            raise DomainError(
+                "EXPORT_TOO_LARGE", "Report exceeds document export limits. Use JSON or CSV.", 413
+            ) from exc
+    else:
+        payload = json.dumps(data, ensure_ascii=False, allow_nan=False, sort_keys=True).encode(
+            "utf-8"
+        )
+    binding = digest(
+        {
+            "workspace_id": str(workspace_id),
+            "actor_id": str(actor_id),
+            "actor_auth_version": session.get(User, actor_id).auth_version,
+            "privacy_epoch": workspace.privacy_epoch,
+            "export_id": str(item.id),
+            "format": item.format,
+            "scope": item.scope,
+            "report_version_id": str(rv.id),
+            "report_id": str(rv.report_id),
+            "report_state": rv.state,
+            "report_number": rv.number,
+            "snapshot_id": str(snapshot.id),
+            "definition_digest": snapshot.definition_digest,
+            "manifest_digest": snapshot.manifest_digest,
+            "data": data,
+        }
     )
+    return ExportCapture(item.format, payload, binding)
+
+
+def download_export(sessions, workspace_id, actor_id, export_id):
+    """Capture, render without a transaction/lease, then reauthorize before release.
+
+    Accepts a session factory, never a caller-owned Session: even a nested active
+    transaction would keep its workspace lock and dispatch lease during rendering.
+    Reprojection also detects changes in release suppression between transactions.
+    """
+    with sessions.begin() as session:
+        captured = capture_export(session, workspace_id, actor_id, export_id)
+    if captured.format == "json":
+        content = captured.payload.decode("utf-8")
+    elif captured.format == "csv":
+        content = csv_document(json.loads(captured.payload))
+    else:
+        content = generate_document(json.loads(captured.payload), captured.format)
+    with sessions.begin() as session:
+        current = capture_export(session, workspace_id, actor_id, export_id)
+        if current.binding != captured.binding:
+            unavailable()
+    return content, MEDIA_TYPES[captured.format]
 
 
 def invalidate_session(session, workspace_id, session_id):
@@ -670,6 +822,16 @@ def purge_sessions(session, workspace_id, session_ids):
             )
         ).all()
     )
+    from app.ai.models import AIRun
+    from app.ai.service import _invalidate_runs, affected_snapshots
+
+    ai_runs = session.scalars(
+        select(AIRun).where(AIRun.workspace_id == workspace_id, affected_snapshots(ids))
+    ).all()
+    _invalidate_runs(session, workspace_id, ai_runs)
+    for run in ai_runs:
+        run.snapshot_id = None
+    session.flush()
     for sid in session_ids:
         invalidate_session(session, workspace_id, sid)
     report_ids = set(

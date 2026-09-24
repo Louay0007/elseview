@@ -139,7 +139,7 @@ def test_embedded_ai_runner(collected, db_engine, settings):
         )
         job_id = UUID(response["job_id"])
     settings.job_poll_seconds = 0.1
-    runner = JobRunner(SimpleNamespace(sessions=sessions), settings)
+    runner = JobRunner(SimpleNamespace(sessions=sessions, engine=db_engine), settings)
 
     async def run():
         await runner.start()

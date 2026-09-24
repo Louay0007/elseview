@@ -1,4 +1,4 @@
-"""Explicit guarded entry point for destructive tests on the dedicated test database."""
+"""Guarded dedicated-database tests; --fresh migrates an empty database without resetting it."""
 
 import os
 import sys
@@ -29,6 +29,36 @@ def validate_test_database(app_url: str, test_url: str, guard: str) -> str:
     return test_url
 
 
+def prepare_database(config, url: str, mode: str = "reset"):
+    from alembic import command
+    from sqlalchemy import create_engine, inspect
+
+    if mode not in {"reset", "fresh"}:
+        raise RuntimeError("Unknown test database mode")
+    if mode == "fresh":
+        engine = create_engine(url, hide_parameters=True)
+        try:
+            with engine.connect() as connection:
+                inspector = inspect(connection)
+                if (
+                    inspector.get_table_names()
+                    or inspector.get_view_names()
+                    or inspector.get_materialized_view_names()
+                    or inspector.get_enums()
+                    or inspector.get_sequence_names()
+                    or set(inspector.get_schema_names())
+                    - {"public", "pg_catalog", "information_schema"}
+                ):
+                    raise RuntimeError(
+                        "Fresh test mode requires an empty database; no reset performed"
+                    )
+        finally:
+            engine.dispose()
+    else:
+        command.downgrade(config, "base")
+    command.upgrade(config, "head")
+
+
 def main():
     import pytest
 
@@ -37,13 +67,17 @@ def main():
         os.environ.get("TEST_DATABASE_URL", ""),
         os.environ.get("TEST_ALLOW_RESET", ""),
     )
+    arguments = sys.argv[1:]
+    if "--fresh" in arguments:
+        arguments.remove("--fresh")
+        os.environ["TEST_DATABASE_MODE"] = "fresh"
     os.environ["TEST_ALLOW_DB"] = "1"
     os.environ["MIGRATION_DATABASE_URL"] = test_url
     os.environ["AI_MODE"] = "mock"
     os.environ["APP_ENV"] = "test"
     os.environ["JOB_RUNNER_ENABLED"] = "false"
     os.chdir(Path(__file__).resolve().parents[1])
-    return pytest.main(["-m", "not live_llm and not load", *sys.argv[1:]])
+    return pytest.main(["-m", "not live_llm and not load and not browser", *arguments])
 
 
 if __name__ == "__main__":

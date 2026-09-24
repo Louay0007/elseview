@@ -319,9 +319,12 @@ def test_withdrawal_immediate_and_erasure_runner(scope, db_engine):
             job_id = job.id
         from app.jobs.service import claim
 
-        with app.state.database.sessions.begin() as session:
-            claimed = claim(session)
-            assert claimed.id == job_id
+        # Other suites may retain pending jobs; exercise SKIP LOCKED without deleting them.
+        with Session(db_engine) as isolation, isolation.begin():
+            isolation.scalars(select(Job).where(Job.id != job_id).with_for_update()).all()
+            with app.state.database.sessions.begin() as session:
+                claimed = claim(session)
+                assert claimed.id == job_id
         await runner._execute(claimed)
 
     asyncio.run(run())

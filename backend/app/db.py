@@ -4,7 +4,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
 from app.config import Settings
 
-REVISION = "022_account_erasure"
+REVISION = "029_ai_orchestration"
 
 
 class Base(DeclarativeBase):

@@ -268,6 +268,45 @@ def test_v2_withdrawal_clears_attributes_and_provenance():
     assert profile.attributes_json == {}
 
 
+@pytest.mark.parametrize("rejoin_version", ["1", "2"])
+@pytest.mark.parametrize(
+    "snapshot", [TARGETING, {"country_id": "TN"}, {"experience": EXPERIENCE}, {"age": 30}]
+)
+def test_frozen_candidate_requires_current_targeting_consent_after_withdrawal(
+    monkeypatch, rejoin_version, snapshot
+):
+    profile = ParticipantProfile(id=uuid4(), user_id=uuid4(), status="active", attributes_json={})
+    user = SimpleNamespace(id=profile.user_id, status="active", verified_at=utcnow())
+    session = Mock()
+    for body in [
+        panel_body(attributes=snapshot),
+        panel_body(attributes={}, decision="withdrawn", receipt_key="withdraw"),
+        panel_body(rejoin_version, attributes={}, receipt_key="rejoin"),
+    ]:
+        session.scalar.side_effect = [user, profile, None]
+        service.panel_update(session, profile.user_id, body)
+    receipt = session.add.call_args.args[0]
+    candidate = SimpleNamespace(
+        subject_id=user.id,
+        source_id=profile.id,
+        source_kind="public",
+        status="eligible",
+        workspace_id=uuid4(),
+        attributes_json=snapshot.copy(),
+    )
+    assert not service.has_targeting(profile.attributes_json)
+    session.get.return_value = profile
+    session.scalar.side_effect = [user, user, receipt]
+    session.scalars.return_value = []
+    monkeypatch.setattr(service, "require_unrestricted", Mock())
+    if rejoin_version == "1" and service.has_targeting(snapshot):
+        with pytest.raises(DomainError, match="TARGETING_CONSENT_REQUIRED"):
+            service.validate_source(session, candidate)
+    else:
+        service.validate_source(session, candidate)
+    assert candidate.attributes_json == snapshot
+
+
 def import_setup(monkeypatch, *, preview=True, **overrides):
     workspace, user, document = uuid4(), uuid4(), uuid4()
     doc = SimpleNamespace(id=document, purpose="private_panel", digest="a" * 64)

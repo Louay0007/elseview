@@ -6,7 +6,15 @@ from fastapi import APIRouter, Depends, Header, Request, Response
 from app.auth.dependencies import current_user, rate_limit
 from app.auth.models import User
 from app.collection import service
-from app.collection.schemas import AnswerBody, BatchBody, StartBody, SubmitBody
+from app.collection.schemas import (
+    AnswerBody,
+    BatchBody,
+    PrepareExposureBody,
+    SessionResponse,
+    StartBody,
+    StartExposureBody,
+    SubmitBody,
+)
 
 router = APIRouter(prefix="/api/v1/collection", tags=["collection"])
 Token = Annotated[str, Header(alias="X-Session-Token", min_length=43, max_length=128)]
@@ -79,6 +87,8 @@ def asset(session_id: UUID, asset_id: UUID, token: Token, request: Request, resp
         current = service.current_answers(session, row)
         reachable, _ = service.path(blocks, {k: v[1].payload for k, v in current.items()})
         allowed = False
+        claims = []
+        exposure_token = request.headers.get("X-Exposure-Token")
         # A stimulus reused by another block must not bypass timed-exposure concealment.
         for exposure in blocks:
             if exposure.type == "five_second" and exposure.config.asset_ref.asset_id == asset_id:
@@ -88,11 +98,7 @@ def asset(session_id: UUID, asset_id: UUID, token: Token, request: Request, resp
                         InteractionAttempt.block_key == exposure.block_key,
                     )
                 )
-                if (
-                    not timed
-                    or timed.state != "started"
-                    or (utcnow() - timed.started_at).total_seconds() > 5
-                ):
+                if not service.exposure_asset_allowed(timed, exposure_token):
                     service.fail(
                         "EXPOSURE_ASSET_CONCEALED",
                         "Timed stimulus is not available outside its exposure.",
@@ -110,12 +116,10 @@ def asset(session_id: UUID, asset_id: UUID, token: Token, request: Request, resp
                         InteractionAttempt.block_key == block.block_key,
                     )
                 )
-                if (
-                    not attempt
-                    or attempt.state != "started"
-                    or (utcnow() - attempt.started_at).total_seconds() > 5
-                ):
+                if not service.exposure_asset_allowed(attempt, exposure_token):
                     continue
+                if attempt.protocol_version == 2:
+                    claims.append(attempt)
             allowed = True
         if not allowed:
             service.fail("NOT_FOUND", "Asset is not currently available.", 404)
@@ -130,6 +134,8 @@ def asset(session_id: UUID, asset_id: UUID, token: Token, request: Request, resp
                 raise ValueError("integrity")
         except (ValueError, OSError):
             service.fail("ASSET_UNAVAILABLE", "Asset is unavailable.")
+        for attempt in claims:
+            attempt.asset_claimed_at = utcnow()
         return Response(
             data,
             media_type=item.media_type,
@@ -140,7 +146,7 @@ def asset(session_id: UUID, asset_id: UUID, token: Token, request: Request, resp
         )
 
 
-@router.post("/sessions", status_code=201)
+@router.post("/sessions", status_code=201, response_model=SessionResponse)
 def start(
     body: StartBody,
     request: Request,
@@ -152,7 +158,7 @@ def start(
         return service.start(session, body, user.id, request.app.state.settings)
 
 
-@router.get("/sessions/{session_id}")
+@router.get("/sessions/{session_id}", response_model=SessionResponse)
 def resume(session_id: UUID, token: Token, request: Request, response: Response):
     guard(request, response)
     with request.app.state.database.sessions.begin() as session:
@@ -188,6 +194,38 @@ def attempt(session_id: UUID, block_key: str, token: Token, request: Request, re
     with request.app.state.database.sessions.begin() as session:
         return service.start_attempt(
             session, service.authorize(session, session_id, token), block_key
+        )
+
+
+@router.post("/sessions/{session_id}/attempts/{block_key}/prepare")
+def prepare_exposure(
+    session_id: UUID,
+    block_key: str,
+    body: PrepareExposureBody,
+    token: Token,
+    request: Request,
+    response: Response,
+):
+    guard(request, response)
+    with request.app.state.database.sessions.begin() as session:
+        return service.prepare_exposure(
+            session, service.authorize(session, session_id, token), block_key, body
+        )
+
+
+@router.post("/sessions/{session_id}/attempts/{block_key}/start")
+def begin_exposure(
+    session_id: UUID,
+    block_key: str,
+    body: StartExposureBody,
+    token: Token,
+    request: Request,
+    response: Response,
+):
+    guard(request, response)
+    with request.app.state.database.sessions.begin() as session:
+        return service.begin_exposure(
+            session, service.authorize(session, session_id, token), block_key, body
         )
 
 

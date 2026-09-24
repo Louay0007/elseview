@@ -19,11 +19,19 @@ from app.privacy_ops.restore import read_manifest
 
 
 @pytest.mark.parametrize("mutation", ["action", "resource", "content", "old"])
-def test_v3_rejects_authenticated_invalid_event_scopes(tmp_path, mutation):
+def test_v4_rejects_authenticated_invalid_event_scopes(tmp_path, mutation):
     event = dict(
         id=str(uuid4()), workspace_id=str(uuid4()), resource_id=str(uuid4()), action="asset_delete"
     )
-    value = dict(version=3, tombstones=[], holds=[], contact_holds=[], accounts=[], events=[event])
+    value = dict(
+        version=4,
+        assessment_revocations=[],
+        tombstones=[],
+        holds=[],
+        contact_holds=[],
+        accounts=[],
+        events=[event],
+    )
     if mutation == "action":
         event["action"] = "account_delete"
     elif mutation == "resource":
@@ -135,8 +143,16 @@ def test_asset_sweep_passes_101_held_rows_and_commits_event_before_disk(
         {"workspace_id": str(uuid4()), "contact_id": "bad"},
     ],
 )
-def test_v3_rejects_invalid_contact_hold_scope(tmp_path, scope):
-    value = dict(version=3, tombstones=[], holds=[], contact_holds=[scope], accounts=[], events=[])
+def test_v4_rejects_invalid_contact_hold_scope(tmp_path, scope):
+    value = dict(
+        version=4,
+        assessment_revocations=[],
+        tombstones=[],
+        holds=[],
+        contact_holds=[scope],
+        accounts=[],
+        events=[],
+    )
     payload = json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
     key = b"x" * 32
     digest = hashlib.sha256(payload).hexdigest()

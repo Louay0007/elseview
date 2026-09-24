@@ -1,9 +1,11 @@
 """Workspace-serialized scheduling and immutable longitudinal evidence."""
 
+import hmac
 from datetime import UTC, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from sqlalchemy import delete, func, select, text
+from sqlalchemy.exc import IntegrityError
 
 from app.auth.security import utcnow
 from app.collection.models import CollectionSession
@@ -204,6 +206,12 @@ def remind(session, row, requester):
     )
     session.add(note)
     session.flush()
+    from app.collaboration.mail import enqueue_booking
+    from app.collaboration.service import notification_allowed
+
+    enqueue_booking(session, note)
+    if not notification_allowed(session, row.workspace_id, requester):
+        return
     job = enqueue(
         session,
         workspace_id=row.workspace_id,
@@ -282,6 +290,9 @@ def change_booking(session, actor, bid, body, cancel=False):
         capacity(session, slot, actor, row.id)
         row.slot_id = slot.id
     row.revision += 1
+    from app.collaboration.mail import cancel_booking
+
+    cancel_booking(session, row.id)
     session.flush()
     if not cancel:
         remind(session, row, actor)
@@ -419,6 +430,10 @@ def create_diary(session, wid, actor, body):
         session.add(row)
         rows.append(row)
     session.flush()
+    from app.collaboration.mail import enqueue_diary
+
+    for row in rows:
+        enqueue_diary(session, row, actor)
     return [occurrence_json(session, r) for r in rows]
 
 
@@ -448,6 +463,7 @@ def occurrence_json(session, row):
         "timezone": row.timezone,
         "state": state,
         "session_id": child.id if child else None,
+        "session_revision": child.revision if child else None,
         "late": bool(child and child.submitted_at and child.submitted_at >= row.due_at),
     }
 
@@ -493,6 +509,66 @@ def start_diary(session, actor, oid, body):
 
     reserve_response(session, child.workspace_id, child.id)
     server_event(session, child, "session.started")
+    return resume(session, child)
+
+
+def recover_diary(session, actor, oid, body):
+    from app.collection.service import authorize as authorize_session
+    from app.collection.service import resume, server_event
+
+    hint = session.get(DiaryOccurrence, oid)
+    if not hint:
+        fail("NOT_FOUND", "Occurrence not found.", 404)
+    wid = hint.workspace_id
+    lock_workspace(session, wid)
+    occurrence = session.get(DiaryOccurrence, oid, populate_existing=True)
+    if not occurrence:
+        fail("NOT_FOUND", "Occurrence not found.", 404)
+    base = session.get(CollectionSession, occurrence.base_session_id, populate_existing=True)
+    if not base or base.workspace_id != wid or base.subject_id != actor:
+        fail("NOT_FOUND", "Occurrence not found.", 404)
+    child = session.scalar(
+        select(CollectionSession)
+        .where(CollectionSession.diary_occurrence_id == oid)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    if not child:
+        fail("NOT_FOUND", "Diary session not found.", 404)
+    if (
+        base.diary_occurrence_id is not None
+        or base.state != "submitted"
+        or child.workspace_id != wid
+        or child.subject_id != actor
+        or child.version_id != base.version_id
+        or child.candidate_id != base.candidate_id
+        or child.launch_id != base.launch_id
+    ):
+        fail("DIARY_SCOPE_MISMATCH", "Diary participation unavailable.", 403)
+    participant_version(session, wid, actor, base.version_id)
+    if child.state != "active" or child.expires_at <= utcnow():
+        fail("DIARY_SESSION_CLOSED", "Diary session is no longer active.", 403)
+    if not occurrence.opens_at <= utcnow() < occurrence.grace_at:
+        fail("DIARY_WINDOW_CLOSED")
+    capability_hash = digest(body.capability)
+    if not hmac.compare_digest(child.capability_hash, capability_hash):
+        if child.revision != body.expected_revision:
+            fail("REVISION_CONFLICT", "Refresh the diary before recovering this session.")
+        child.capability_hash = capability_hash
+        child.revision += 1
+        try:
+            session.flush()
+        except IntegrityError as error:
+            if (
+                getattr(getattr(error.orig, "diag", None), "constraint_name", None)
+                == "uq_collection_capability"
+            ):
+                fail("RECOVERY_CONFLICT", "Generate a new recovery request.")
+            raise
+        authorize_session(session, child.id, body.capability)
+        server_event(session, child, "session.recovered")
+    else:
+        authorize_session(session, child.id, body.capability)
     return resume(session, child)
 
 

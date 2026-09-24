@@ -46,9 +46,8 @@ def build_contract(app):
         "ScopedAPIKey": {"type": "apiKey", "in": "header", "name": "X-API-Key"},
         "RefreshCookie": {"type": "apiKey", "in": "cookie", "name": "elseview_refresh"},
     }
-    for context in iter_route_contexts(app.routes):
-        route = context.route
-        if not isinstance(route, APIRoute):
+    for route in iter_route_contexts(app.routes):
+        if not isinstance(route.original_route, APIRoute) or not route.include_in_schema:
             continue
         for method in route.methods:
             operation = schema["paths"][route.path_format][method.lower()]

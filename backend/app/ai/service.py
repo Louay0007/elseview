@@ -29,7 +29,7 @@ from app.jobs.models import Job
 from app.studies.service import authorize
 
 from . import adapter, profiles
-from .models import AIAttempt, AIEvidence, AIRun, UsageBudget
+from .models import AIAttempt, AICommand, AIEvidence, AIRun, UsageBudget
 
 
 def denied(code="AI_UNAVAILABLE"):
@@ -49,6 +49,10 @@ def config(settings):
 
 
 def context(session, run):
+    from . import orchestration
+
+    if orchestration.is_graph(run):
+        return orchestration.analysis_inputs.collect(session, run)[:2]
     workspace = lock_workspace(session, run.workspace_id)
     if workspace.privacy_epoch != run.privacy_epoch or run.state == "invalidated":
         denied()
@@ -195,6 +199,14 @@ def cache_identity(run, prompt, *, legacy=False):
 
 def request_identity(body):
     excluded = {"command_key"}
+    if body.profile_revision == "1":
+        excluded |= {
+            "profile_revision",
+            "right_snapshot_id",
+            "plan_digest",
+            "max_reserved_cost",
+            "currency",
+        }
     # The compatible default must also replay commands written before depth existed.
     if body.depth == "standard":
         excluded.add("depth")
@@ -202,6 +214,10 @@ def request_identity(body):
 
 
 def estimate(session, settings, workspace_id, actor_id, body):
+    if body.profile_revision == "2":
+        from . import orchestration
+
+        return orchestration.estimate(session, settings, workspace_id, actor_id, body)
     validate_request(settings, body)
     workspace = lock_workspace(session, workspace_id)
     authorize(session, workspace_id, actor_id, body.study_id, "ai")
@@ -211,11 +227,24 @@ def estimate(session, settings, workspace_id, actor_id, body):
 
 
 def create(session, settings, workspace_id, actor_id, body):
+    if body.profile_revision == "2":
+        from . import orchestration
+
+        return orchestration.create(session, settings, workspace_id, actor_id, body)
     if settings.ai_mode == "disabled":
         denied("AI_DISABLED")
     workspace = lock_workspace(session, workspace_id)
     authorize(session, workspace_id, actor_id, body.study_id, "ai")
     request_hash = request_identity(body)
+    bound = session.scalar(
+        select(AICommand).where(
+            AICommand.workspace_id == workspace_id,
+            AICommand.requester_id == actor_id,
+            AICommand.command_key == body.command_key,
+        )
+    )
+    if bound:
+        denied("IDEMPOTENCY_CONFLICT")
     prior = session.scalar(
         select(AIRun).where(
             AIRun.workspace_id == workspace_id,
@@ -330,7 +359,11 @@ def authorize_job(session, job):
 
 
 def attempt_for(session, run):
-    return session.scalar(select(AIAttempt).where(AIAttempt.run_id == run.id).with_for_update())
+    return session.scalar(
+        select(AIAttempt)
+        .where(AIAttempt.run_id == run.id, AIAttempt.step_id.is_(None))
+        .with_for_update()
+    )
 
 
 def settle(session, run, attempt, amount):
@@ -542,6 +575,10 @@ def record_error(session, job, failure, request_id):
 
 def view(session, workspace_id, actor_id, run_id):
     run = get_scoped(session, AIRun, workspace_id, run_id)
+    from . import orchestration
+
+    if orchestration.is_graph(run):
+        return orchestration.view(session, workspace_id, actor_id, run_id)
     authorize(session, workspace_id, actor_id, run.study_id, "ai")
     context(session, run)
     attempt = attempt_for(session, run)
@@ -593,11 +630,23 @@ def _invalidate_runs(session, workspace_id, runs):
         from app.billing.service import release_ai_addon
 
         release_ai_addon(session, workspace_id, run.id)
+        from . import orchestration
+
+        if orchestration.is_graph(run):
+            run.state = "invalidated"
+            orchestration.stop(session, run, "privacy_invalidated")
         if preserve:
             run.state = "invalidated"
             continue
         run.state, run.output, run.instruction = "invalidated", None, ""
         run.coverage = {}
+        session.flush()
+        if orchestration.is_graph(run):
+            from .models import AIRunInput
+
+            for step in orchestration.steps(session, run):
+                step.membership, step.result, step.result_digest = {}, None, None
+            session.execute(delete(AIRunInput).where(AIRunInput.run_id == run.id))
         session.execute(delete(AIEvidence).where(AIEvidence.run_id == run.id))
 
 
@@ -625,7 +674,18 @@ def invalidate_sessions(session, workspace_id, session_ids):
         session.scalars(
             select(AIRun).where(
                 AIRun.workspace_id == workspace_id,
-                AIRun.snapshot_id.in_(affected),
+                affected_snapshots(affected),
             )
         ),
+    )
+
+
+def affected_snapshots(snapshot_ids):
+    from sqlalchemy import or_
+
+    from .models import AIRunInput
+
+    return or_(
+        AIRun.snapshot_id.in_(snapshot_ids),
+        AIRun.id.in_(select(AIRunInput.run_id).where(AIRunInput.snapshot_id.in_(snapshot_ids))),
     )

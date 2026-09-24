@@ -45,7 +45,12 @@ def test_worker_does_not_claim_jobs_until_restore_is_ready(settings, tmp_path, m
             runner._stop.set()
             return None
 
+        async def mail():
+            calls.append("mail")
+            return False
+
         monkeypatch.setattr(runner, "_db", claim)
+        monkeypatch.setattr(runner, "_dispatch_mail", mail)
         checked = asyncio.Event()
         loop = asyncio.get_running_loop()
 
@@ -64,7 +69,7 @@ def test_worker_does_not_claim_jobs_until_restore_is_ready(settings, tmp_path, m
         monkeypatch.setattr(restore, "restore_ready", lambda *args: True)
         await runner.start()
         await asyncio.wait_for(runner._task, timeout=2)
-        assert calls == ["claim"]
+        assert calls == ["mail", "claim"]
 
     try:
         asyncio.run(exercise())

@@ -32,12 +32,14 @@ def scope(db_engine):
         s.add(Workspace(id=wid, name="Synthetic jobs"))
         s.flush()
         s.add(Membership(user_id=uid, workspace_id=wid, role="owner"))
-    yield sessions, uid, wid
-    # Isolate claim tests from other tests without destructive global resets.
-    with sessions.begin() as s:
-        for job in s.scalars(select(Job).where(Job.workspace_id == wid)):
-            if job.state in {"pending", "running"}:
-                job.state = "cancelled"
+    # Exclude retained jobs from other test workspaces through the real SKIP LOCKED path.
+    with sessions.begin() as isolation:
+        isolation.scalars(select(Job).where(Job.workspace_id != wid).with_for_update()).all()
+        yield sessions, uid, wid
+        with sessions.begin() as s:
+            for job in s.scalars(select(Job).where(Job.workspace_id == wid)):
+                if job.state in {"pending", "running"}:
+                    job.state = "cancelled"
 
 
 def queued(scope, **kwargs):
@@ -356,7 +358,8 @@ def test_shutdown_bounded_with_hung_handler(monkeypatch):
 
 
 @pytest.mark.db
-def test_jobs_migration_downgrade_upgrade(db_engine):
+def test_jobs_migration_downgrade_upgrade(migration_engine):
+    db_engine = migration_engine
     import importlib.util
     from pathlib import Path
 
@@ -376,25 +379,15 @@ def test_jobs_migration_downgrade_upgrade(db_engine):
     )
     collection_migration = importlib.util.module_from_spec(collection_spec)
     collection_spec.loader.exec_module(collection_migration)
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
+
+    scripts = ScriptDirectory.from_config(Config(str(path.parents[2] / "alembic.ini")))
     descendants = []
-    for name in (
-        "008_reviews",
-        "009_analytics",
-        "010_ai",
-        "011_methods",
-        "012_longitudinal",
-        "013_evaluation",
-        "014_templates",
-        "015_billing",
-        "016_collaboration",
-        "017_privacy_ops",
-        "018_billing_allowances",
-        "019_privacy_events",
-        "020_review_access",
-        "021_privacy_lifecycle",
-        "022_account_erasure",
-    ):
-        descendant_spec = importlib.util.spec_from_file_location(name, path.parent / f"{name}.py")
+    for revision in reversed(list(scripts.walk_revisions("007_collection", "heads"))):
+        if revision.revision == "007_collection":
+            continue
+        descendant_spec = importlib.util.spec_from_file_location(revision.revision, revision.path)
         descendant = importlib.util.module_from_spec(descendant_spec)
         descendant_spec.loader.exec_module(descendant)
         descendants.append(descendant)
