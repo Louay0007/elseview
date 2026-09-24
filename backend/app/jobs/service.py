@@ -11,6 +11,7 @@ from sqlalchemy.dialects.postgresql import insert
 from app.auth.models import Membership, User, Workspace
 from app.auth.service import require_workspace
 from app.common.errors import DomainError
+from app.common.privacy import erase_files
 from app.jobs.models import Job, JobAttempt
 
 
@@ -19,7 +20,14 @@ async def system_check(payload):
 
 
 # Explicit server-side allowlist: handler, replay safety. No dynamic imports.
-REGISTRY = {"system.check": (system_check, True)}
+REGISTRY = {
+    "system.check": (system_check, True),
+    "privacy.erase": (erase_files, True),
+    "collection.quality": (system_check, True),
+    "ai.generate": (system_check, False),
+    "longitudinal.reminder": (system_check, True),
+    "collaboration.webhook": (system_check, True),
+}
 TERMINAL = {"succeeded", "failed", "cancelled", "uncertain"}
 
 
@@ -28,6 +36,26 @@ def now(session):
 
 
 def _authority(session, job):
+    if job.kind == "collaboration.webhook":
+        from app.collaboration.webhooks import authorize_job
+
+        return authorize_job(session, job)
+    if job.kind == "longitudinal.reminder":
+        from app.longitudinal.service import reminder_job_allowed
+
+        return reminder_job_allowed(session, job)
+    if job.kind == "ai.generate":
+        from app.ai.service import authorize_job
+
+        return authorize_job(session, job)
+    if job.kind == "collection.quality":
+        from app.collection.quality import quality_job_allowed
+
+        return quality_job_allowed(session, job)
+    if job.kind == "privacy.erase":
+        from app.common.privacy import privacy_job_allowed
+
+        return privacy_job_allowed(session, job)
     workspace = session.scalar(
         select(Workspace)
         .where(Workspace.id == job.workspace_id)
@@ -70,8 +98,19 @@ def enqueue(
     target_id=None,
     run_after=None,
     max_attempts=3,
+    internal=False,
 ):
-    require_workspace(session, requester_id, workspace_id, "jobs.create")
+    if kind in {
+        "privacy.erase",
+        "collection.quality",
+        "ai.generate",
+        "longitudinal.reminder",
+        "collaboration.webhook",
+    }:
+        if not internal:
+            raise DomainError("invalid_job_kind", "Unknown job kind", 422)
+    else:
+        require_workspace(session, requester_id, workspace_id, "jobs.create")
     if kind not in REGISTRY:
         raise DomainError("invalid_job_kind", "Unknown job kind", 422)
     # The demo accepts no arbitrary data, preventing accidental PII storage.
@@ -97,7 +136,11 @@ def enqueue(
     ).hexdigest()
     workspace = session.get(Workspace, workspace_id)
     authority = Job(
-        workspace_id=workspace_id, requester_id=requester_id, privacy_epoch=workspace.privacy_epoch
+        workspace_id=workspace_id,
+        requester_id=requester_id,
+        privacy_epoch=workspace.privacy_epoch,
+        kind=kind,
+        target_id=target_id,
     )
     if not _authority(session, authority):
         raise DomainError("authorization_changed", "Job creation is no longer permitted", 403)
@@ -141,6 +184,18 @@ def _finish_attempt(session, job, outcome, error=None):
 
 
 def _end(session, job, state, error=None):
+    if job.kind == "collaboration.webhook":
+        from app.collaboration.webhooks import finish_delivery
+
+        finish_delivery(
+            session,
+            job,
+            state=state if state in {"pending", "succeeded", "failed", "cancelled"} else "failed",
+        )
+    if job.kind == "ai.generate" and state != "succeeded":
+        from app.ai.service import fail_job
+
+        fail_job(session, job, error)
     _finish_attempt(session, job, state, error)
     job.state, job.error_code = state, error
     job.lease_token = job.lease_expires_at = None
@@ -233,6 +288,18 @@ def complete(session, job_id, token, result, persist=None):
     # Trusted caller callback for atomic DB effects; never invoke external effects here.
     if persist is not None:
         persist(session, job)
+    if job.kind == "privacy.erase":
+        from app.common.privacy import finish_erasure
+
+        finish_erasure(session, job)
+    elif job.kind == "collection.quality":
+        from app.collection.quality import finish_quality
+
+        finish_quality(session, job)
+    elif job.kind == "longitudinal.reminder":
+        from app.longitudinal.service import finish_reminder
+
+        finish_reminder(session, job)
     job.result = result
     _end(session, job, "succeeded")
     return True
@@ -252,6 +319,17 @@ def fail(session, job_id, token, error_code="handler_error", retryable=False):
         state = "pending"
         job.run_after = now(session) + timedelta(seconds=min(60, 2**job.attempt_count))
     _end(session, job, state, code)
+    return True
+
+
+def fail_webhook(session, job_id, token, retryable, retry_after):
+    job = _fence(session, job_id, token)
+    if job is None:
+        return False
+    retry = retryable and job.attempt_count < job.max_attempts
+    _end(session, job, "pending" if retry else "failed", "handler_error")
+    if retry:
+        job.run_after = now(session) + timedelta(seconds=max(1, min(60, retry_after)))
     return True
 
 
@@ -275,6 +353,10 @@ def list_jobs(session, workspace_id, user_id, limit=50):
 
 def cancel(session, *, workspace_id, user_id, job_id):
     job = get_job(session, workspace_id, user_id, job_id)
+    if job.kind == "privacy.erase":
+        raise DomainError(
+            "PRIVACY_JOB_REQUIRED", "Requested privacy cleanup cannot be cancelled.", 409
+        )
     job = session.scalar(
         select(Job)
         .where(Job.id == job.id)

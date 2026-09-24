@@ -368,17 +368,53 @@ def test_jobs_migration_downgrade_upgrade(db_engine):
     spec = importlib.util.spec_from_file_location("jobs_migration", path)
     migration = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(migration)
+    # Later collection/research rows reference durable jobs. Unwind them first,
+    # just as Alembic does, instead of dropping an ancestor beneath live children.
+    collection_path = path.parent / "007_collection.py"
+    collection_spec = importlib.util.spec_from_file_location(
+        "collection_migration", collection_path
+    )
+    collection_migration = importlib.util.module_from_spec(collection_spec)
+    collection_spec.loader.exec_module(collection_migration)
+    descendants = []
+    for name in (
+        "008_reviews",
+        "009_analytics",
+        "010_ai",
+        "011_methods",
+        "012_longitudinal",
+        "013_evaluation",
+        "014_templates",
+        "015_billing",
+        "016_collaboration",
+        "017_privacy_ops",
+        "018_billing_allowances",
+        "019_privacy_events",
+        "020_review_access",
+        "021_privacy_lifecycle",
+        "022_account_erasure",
+    ):
+        descendant_spec = importlib.util.spec_from_file_location(name, path.parent / f"{name}.py")
+        descendant = importlib.util.module_from_spec(descendant_spec)
+        descendant_spec.loader.exec_module(descendant)
+        descendants.append(descendant)
     # Transactional DDL: rollback restores original data, even if an assertion fails.
     with db_engine.connect() as connection:
         transaction = connection.begin()
         try:
             with Operations.context(MigrationContext.configure(connection)):
+                for descendant in reversed(descendants):
+                    descendant.downgrade()
+                collection_migration.downgrade()
                 migration.downgrade()
                 assert not inspect(connection).has_table("jobs")
                 assert not inspect(connection).has_table("idempotency_records")
                 migration.upgrade()
                 assert inspect(connection).has_table("job_attempts")
                 assert inspect(connection).has_table("idempotency_records")
+                collection_migration.upgrade()
+                for descendant in descendants:
+                    descendant.upgrade()
         finally:
             transaction.rollback()
 

@@ -117,6 +117,52 @@ def fixed_random():
 
 
 @pytest.fixture
+def research_app(settings, db_engine):
+    from uuid import uuid4
+
+    from pydantic import SecretStr
+    from sqlalchemy.orm import Session
+
+    from app.auth.models import Membership, User
+    from app.auth.security import utcnow
+    from app.auth.service import create_workspace
+
+    config = settings.model_copy(
+        update={"database_url": SecretStr(db_engine.url.render_as_string(hide_password=False))}
+    )
+    app = create_app(config)
+
+    class LocalLimiter:
+        def check(self, *args, **kwargs):
+            pass
+
+        def close(self):
+            pass
+
+    app.state.rate_limiter.close()
+    app.state.rate_limiter = LocalLimiter()
+
+    def actor(workspace_id=None, role="owner"):
+        with Session(db_engine) as session, session.begin():
+            user = User(
+                email=f"research-{uuid4().hex}@example.test",
+                password_hash="unused-synthetic",
+                verified_at=utcnow(),
+            )
+            session.add(user)
+            session.flush()
+            if workspace_id is None:
+                workspace_id = create_workspace(session, user.id, "Synthetic research").id
+            else:
+                session.add(Membership(workspace_id=workspace_id, user_id=user.id, role=role))
+            credentials = app.state.auth._new_login(session, user)
+            return {"authorization": "Bearer " + credentials["access_token"]}, user.id, workspace_id
+
+    with TestClient(app) as client:
+        yield client, app, actor
+
+
+@pytest.fixture
 def mock_provider():
     import httpx
 

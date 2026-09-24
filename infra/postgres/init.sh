@@ -10,7 +10,9 @@ psql --username "$POSTGRES_USER" --dbname postgres --set ON_ERROR_STOP=1 \
   --set test_password="$DB_TEST_PASSWORD" <<'SQL'
 CREATE ROLE app_owner LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION PASSWORD :'owner_password';
 CREATE ROLE app LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION PASSWORD :'app_password';
-CREATE ROLE test_owner LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION PASSWORD :'test_password';
+-- Development-only role may create isolated *_restore clones for privacy drills.
+-- Runtime and migration roles above never receive this privilege.
+CREATE ROLE test_owner LOGIN NOSUPERUSER CREATEDB NOCREATEROLE NOREPLICATION PASSWORD :'test_password';
 CREATE DATABASE elseview_app OWNER app_owner;
 CREATE DATABASE elseview_test OWNER test_owner;
 REVOKE ALL ON DATABASE elseview_app FROM PUBLIC;

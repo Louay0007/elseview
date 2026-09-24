@@ -82,7 +82,7 @@ def test_compose_has_four_services_and_loopback_only():
         else:
             assert all(str(port).startswith("127.0.0.1:") for port in service["ports"])
     assert base["services"]["backend"]["user"] == "10001:10001"
-    assert base["services"]["backend"]["environment"]["AI_MODE"] == "mock"
+    assert base["services"]["backend"]["environment"]["AI_MODE"] == "${AI_MODE:-mock}"
     assert "--reload" not in base["services"]["backend"]["command"]
     assert "--reload" in dev["services"]["backend"]["command"]
 

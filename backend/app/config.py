@@ -1,6 +1,8 @@
 """Fail-closed configuration. Environment values must never appear in error logs."""
 
+import ipaddress
 import os
+from decimal import Decimal
 from pathlib import Path
 from typing import Literal
 from urllib.parse import urlsplit
@@ -17,6 +19,34 @@ class Settings(BaseSettings):
 
     app_env: Literal["development", "test", "production"] = "development"
     ai_mode: Literal["disabled", "mock", "live"] = "mock"
+    collaboration_integration_mode: Literal["disabled", "mock", "live"] = "disabled"
+    collaboration_webhook_destinations: list[str] = []
+    collaboration_webhook_secret: SecretStr = SecretStr("")
+    collaboration_webhook_timeout_seconds: float = Field(default=3, gt=0, le=30)
+    llm_base_url: str = ""
+    llm_api_key: SecretStr = SecretStr("")
+    llm_model: str = "mock-v1"
+    llm_approved_hosts: list[str] = []
+    llm_profile_approved: bool = False
+    llm_privacy_approved: bool = False
+    llm_privacy_record: str = ""
+    llm_config_revision: str = "1"
+    llm_model_revision: str = "unspecified"
+    llm_timeout_seconds: float = Field(default=5, gt=0, le=120)
+    llm_max_output_tokens: int = Field(default=1500, ge=64, le=8000)
+    llm_context_limit: int = Field(default=16000, ge=2048, le=200000)
+    llm_concurrency: Literal[1] = 1
+    llm_max_attempts: Literal[1] = 1
+    llm_output_parameter: Literal["max_tokens", "max_completion_tokens"] = "max_tokens"
+    llm_supports_json_schema: bool = False
+    llm_supports_json_object: bool = False
+    llm_input_price_per_million: Decimal = Field(default=Decimal("0"), ge=0)
+    llm_output_price_per_million: Decimal = Field(default=Decimal("0"), ge=0)
+    llm_other_charge_reserve: Decimal = Field(default=Decimal("0"), ge=0)
+    llm_study_budget: Decimal = Field(default=Decimal("1"), gt=0)
+    llm_workspace_daily_budget: Decimal = Field(default=Decimal("5"), gt=0)
+    llm_currency: str = Field(default="USD", pattern=r"^[A-Z]{3}$")
+    llm_budget_timezone: Literal["UTC"] = "UTC"
     database_url: SecretStr
     migration_database_url: SecretStr
     test_database_url: SecretStr
@@ -26,6 +56,7 @@ class Settings(BaseSettings):
     allowed_origins: list[str] = ["http://localhost:8080"]
     private_root: Path = Path("/app/private")
     job_runner_enabled: bool = False
+    private_workspace_bytes: int = Field(default=268435456, ge=16777216, le=10737418240)
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     max_request_bytes: int = Field(default=1_048_576, ge=1, le=10_485_760)
     db_pool_size: int = Field(default=5, ge=1, le=20)
@@ -84,8 +115,47 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def policy(self) -> "Settings":
+        if self.collaboration_integration_mode != "disabled" and (
+            not self.collaboration_webhook_destinations
+            or len(self.collaboration_webhook_secret.get_secret_value()) < 32
+            or self.collaboration_webhook_timeout_seconds >= self.job_timeout_seconds
+        ):
+            raise ValueError(
+                "Enabled webhooks require approved destinations, a strong secret and bounded timeout"
+            )
         if self.ai_mode == "live":
-            raise ValueError("Live AI is not implemented until P10")
+            url = urlsplit(self.llm_base_url)
+            try:
+                unsafe_host = not ipaddress.ip_address(url.hostname or "").is_global
+            except ValueError:
+                unsafe_host = (
+                    not url.hostname
+                    or "." not in url.hostname
+                    or url.hostname.endswith((".internal", ".local", ".localhost"))
+                )
+            if not (
+                self.llm_profile_approved
+                and self.llm_privacy_approved
+                and self.llm_privacy_record.strip()
+                and self.llm_api_key.get_secret_value()
+                and self.llm_model.strip()
+                and self.llm_model != "mock-v1"
+                and url.scheme == "https"
+                and url.hostname in self.llm_approved_hosts
+                and not unsafe_host
+                and url.hostname not in {"localhost", "127.0.0.1", "::1"}
+                and not url.username
+                and not url.password
+                and not url.query
+                and not url.fragment
+                and url.port in {None, 443}
+                and self.llm_timeout_seconds < self.job_timeout_seconds
+                and self.llm_input_price_per_million > 0
+                and self.llm_output_price_per_million > 0
+            ):
+                raise ValueError(
+                    "Live AI requires an approved HTTPS capability/privacy profile and pricing"
+                )
         if self.job_timeout_seconds >= self.job_lease_seconds:
             raise ValueError("Job timeout must be shorter than its lease")
         app = make_url(self.database_url.get_secret_value())
@@ -134,6 +204,7 @@ class Settings(BaseSettings):
 def load_settings() -> Settings:
     """Ignore unrelated OS variables; reject misspelled application-owned settings."""
     owned = (
+        "COLLABORATION_",
         "APP_",
         "AUTH_",
         "AI_",

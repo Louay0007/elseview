@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 class JobRunner:
     def __init__(self, database, settings):
         self.database = database
+        self.settings = settings
         self.poll = max(0.05, getattr(settings, "job_poll_seconds", 2))
         self.lease = max(1, getattr(settings, "job_lease_seconds", 30))
         self.timeout = max(0.05, getattr(settings, "job_timeout_seconds", 10))
@@ -74,7 +75,19 @@ class JobRunner:
 
     async def _execute(self, job):
         handler = service.REGISTRY[job.kind][0]
-        self._handler = asyncio.create_task(handler(job.payload))
+        if job.kind == "privacy.erase":
+            operation = asyncio.to_thread(handler, self.database, self.settings, job)
+        elif job.kind == "ai.generate":
+            from app.ai.service import execute
+
+            operation = execute(self.database, self.settings, job)
+        elif job.kind == "collaboration.webhook":
+            from app.collaboration.webhooks import execute
+
+            operation = execute(self.database, self.settings, job)
+        else:
+            operation = handler(job.payload)
+        self._handler = asyncio.create_task(operation)
         self._handler.add_done_callback(self._observe)
         deadline = asyncio.get_running_loop().time() + self.timeout
         try:
@@ -92,9 +105,25 @@ class JobRunner:
                 if done:
                     try:
                         result = self._handler.result()
-                    except Exception:
+                    except Exception as exc:
+                        if job.kind == "collaboration.webhook":
+                            from app.collaboration.webhooks import WebhookFailure
+
+                            if isinstance(exc, WebhookFailure):
+                                await self._db(
+                                    service.fail_webhook,
+                                    job.id,
+                                    job.lease_token,
+                                    exc.retryable,
+                                    exc.retry_after,
+                                )
+                                return
                         await self._db(
-                            service.fail, job.id, job.lease_token, "handler_error", False
+                            service.fail,
+                            job.id,
+                            job.lease_token,
+                            "handler_error",
+                            job.kind == "privacy.erase",
                         )
                     else:
                         await self._db(service.complete, job.id, job.lease_token, result)
@@ -108,7 +137,13 @@ class JobRunner:
     async def _run(self):
         while not self._stop.is_set():
             try:
-                job = await self._db(service.claim, self.lease)
+                from app.privacy_ops.restore import restore_ready
+
+                engine = getattr(self.database, "engine", None)
+                ready = engine is None or await asyncio.to_thread(
+                    restore_ready, engine, self.settings.private_root
+                )
+                job = await self._db(service.claim, self.lease) if ready else None
                 if job:
                     await self._execute(job)
             except asyncio.CancelledError:

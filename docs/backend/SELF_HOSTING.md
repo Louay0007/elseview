@@ -13,11 +13,11 @@
 
 The cloud LLM is an external HTTPS service, not a container. No separate worker, scheduler, inference, storage, monitoring or proxy service. The frontend container itself proxies `/api` and serves the UI.
 
-React is the confirmed frontend choice. The planned client-rendered app uses FastAPI through `/api`; cloud LLM credentials stay in the backend. Build tooling is not yet selected or installed. Development and production use the same frontend service slot, so the architecture remains four containers.
+React/Vite are installed. The client uses FastAPI through `/api/`; cloud LLM credentials stay in the backend. Development Vite and production Caddy occupy the same frontend service slot, so the architecture remains four containers.
 
 ## Runtime
 
-The inspected Mac has Apple Silicon, 16 GiB RAM and a Docker CLI, but its daemon was not running when checked. The backend image supplies Python 3.12; do not replace system Python. Use ARM64-compatible images and tested pinned dependencies. Choose a suitable container runtime; Docker Desktop licensing is conditional, and Colima is an alternative.
+The development host is an Apple Silicon Mac. The executed P18 probe recorded Linux aarch64, eight logical CPUs and about 8.32 GB of physical memory visible inside its container; see `P18_RELIABILITY.md` for measurement scope. The backend image supplies Python 3.12; do not replace system Python. Images and installed dependency versions are pinned.
 
 One backend application process initially, with one lifespan-managed job runner. PostgreSQL stores leases and future due times. Cloud HTTP is async; blocking database/export operations use bounded execution. No GPU or model memory planning is required.
 
@@ -37,7 +37,7 @@ Host root: `/Users/user/Workspace/startup-act/`. Backend volume paths: `/app/pri
 - Restart: unfinished jobs recover from leases; unknown external outcomes retain conservative cost status.
 - Low disk: refuse new large uploads before corruption.
 
-Migrations and backups are one-off commands through existing services, not additional permanent containers. No runnable Compose/application images are supplied by this design-only update.
+Migrations and backups are one-off commands through existing services, not additional permanent containers. Use `/Users/user/Workspace/startup-act/scripts/dev` for the canonical Compose file set. P18 exercised actual database/cache/backend restarts after a local backup; readiness recovered and durable development counts matched.
 
 ## Backups and costs
 
@@ -52,4 +52,4 @@ The software is self-hostable; cloud fees, hardware, electricity, backups and pa
 - https://github.com/abiosoft/colima
 - https://valkey.io/
 
-Status: planned deployment. No containers or cloud calls were started.
+Status: four-container development installation verified through P18/P19 acceptance work. AI remains mocked and integrations disabled. This is not production high availability, encrypted backup certification or a live-provider approval. See `P18_P19_ACCEPTANCE.md` and `P16_P17_API.md` for evidence and restore prerequisites.

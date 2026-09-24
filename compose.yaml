@@ -25,7 +25,28 @@ services:
     command: ["python", "-m", "uvicorn", "app.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]
     environment:
       APP_ENV: development
-      AI_MODE: mock
+      AI_MODE: "${AI_MODE:-mock}"
+      LLM_BASE_URL: "${LLM_BASE_URL:-}"
+      LLM_API_KEY: "${LLM_API_KEY:-}"
+      LLM_MODEL: "${LLM_MODEL:-mock-v1}"
+      LLM_APPROVED_HOSTS: '${LLM_APPROVED_HOSTS:-[]}'
+      LLM_PROFILE_APPROVED: "${LLM_PROFILE_APPROVED:-false}"
+      LLM_PRIVACY_APPROVED: "${LLM_PRIVACY_APPROVED:-false}"
+      LLM_PRIVACY_RECORD: "${LLM_PRIVACY_RECORD:-}"
+      LLM_CONFIG_REVISION: "${LLM_CONFIG_REVISION:-1}"
+      LLM_MODEL_REVISION: "${LLM_MODEL_REVISION:-unspecified}"
+      LLM_TIMEOUT_SECONDS: "${LLM_TIMEOUT_SECONDS:-5}"
+      LLM_MAX_OUTPUT_TOKENS: "${LLM_MAX_OUTPUT_TOKENS:-1500}"
+      LLM_CONTEXT_LIMIT: "${LLM_CONTEXT_LIMIT:-16000}"
+      LLM_OUTPUT_PARAMETER: "${LLM_OUTPUT_PARAMETER:-max_tokens}"
+      LLM_SUPPORTS_JSON_SCHEMA: "${LLM_SUPPORTS_JSON_SCHEMA:-false}"
+      LLM_SUPPORTS_JSON_OBJECT: "${LLM_SUPPORTS_JSON_OBJECT:-false}"
+      LLM_INPUT_PRICE_PER_MILLION: "${LLM_INPUT_PRICE_PER_MILLION:-0}"
+      LLM_OUTPUT_PRICE_PER_MILLION: "${LLM_OUTPUT_PRICE_PER_MILLION:-0}"
+      LLM_OTHER_CHARGE_RESERVE: "${LLM_OTHER_CHARGE_RESERVE:-0}"
+      LLM_STUDY_BUDGET: "${LLM_STUDY_BUDGET:-1}"
+      LLM_WORKSPACE_DAILY_BUDGET: "${LLM_WORKSPACE_DAILY_BUDGET:-5}"
+      LLM_CURRENCY: "${LLM_CURRENCY:-USD}"
       DATABASE_URL: "postgresql+psycopg://app:${DB_APP_PASSWORD:?run setup}@database:5432/elseview_app"
       MIGRATION_DATABASE_URL: "postgresql+psycopg://app_owner:${DB_OWNER_PASSWORD:?run setup}@database:5432/elseview_app"
       TEST_DATABASE_URL: "postgresql+psycopg://test_owner:${DB_TEST_PASSWORD:?run setup}@database:5432/elseview_test"
@@ -34,7 +55,11 @@ services:
       PUBLIC_ORIGIN: http://localhost:8080
       ALLOWED_ORIGINS: '["http://localhost:8080"]'
       PRIVATE_ROOT: /app/private
-      JOB_RUNNER_ENABLED: "false"
+      COLLABORATION_INTEGRATION_MODE: "${COLLABORATION_INTEGRATION_MODE:-disabled}"
+      COLLABORATION_WEBHOOK_DESTINATIONS: '${COLLABORATION_WEBHOOK_DESTINATIONS:-[]}'
+      COLLABORATION_WEBHOOK_SECRET: "${COLLABORATION_WEBHOOK_SECRET:-}"
+      COLLABORATION_WEBHOOK_TIMEOUT_SECONDS: "${COLLABORATION_WEBHOOK_TIMEOUT_SECONDS:-3}"
+      JOB_RUNNER_ENABLED: "true"
       LOG_LEVEL: INFO
     volumes:
       - private_data:/app/private

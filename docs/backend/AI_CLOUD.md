@@ -87,4 +87,9 @@ Mock tests: valid/malformed JSON, wrong source, 401/429, timeout, unknown charge
 - https://fastapi.tiangolo.com/advanced/events/
 - https://www.postgresql.org/docs/16/sql-select.html
 
-Status: proposed design only. No cloud account, key or API request was created.
+Status: P10 development implementation is available under
+`/Users/user/Workspace/startup-act/backend/app/ai/`, with mocked-provider tests,
+explicit live gates and conservative charge handling. No cloud account, real key
+or paid API request was created. See `/Users/user/Workspace/startup-act/docs/backend/P10_P11_API.md`
+for the implemented subset and `/Users/user/Workspace/startup-act/docs/backend/IMPLEMENTATION_STATUS.md`
+for executed evidence and external compatibility/quality gates.

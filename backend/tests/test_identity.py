@@ -422,3 +422,50 @@ def test_jobs_api_uses_real_auth(auth_app):
         client.post(f"/api/v1/workspaces/{wid}/jobs/{jid}/cancel", headers=actor).json()["state"]
         == "cancelled"
     )
+
+
+def test_verification_resend_workspace_list_and_session_revoke(auth_app):
+    client, delivered, _ = auth_app
+    email = f"resend-{uuid4().hex}@example.test"
+    client.post(
+        "/api/v1/auth/register", headers=ORIGIN, json={"email": email, "password": PASSWORD}
+    )
+    old = delivered[-1][2]
+    assert (
+        client.post(
+            "/api/v1/auth/verification/request", headers=ORIGIN, json={"email": email}
+        ).status_code
+        == 202
+    )
+    new = delivered[-1][2]
+    assert new != old
+    assert (
+        client.post("/api/v1/auth/verify-email", headers=ORIGIN, json={"token": old}).status_code
+        == 400
+    )
+    assert (
+        client.post("/api/v1/auth/verify-email", headers=ORIGIN, json={"token": new}).status_code
+        == 200
+    )
+    response = client.post(
+        "/api/v1/auth/login", headers=ORIGIN, json={"email": email, "password": PASSWORD}
+    )
+    cookie = response.headers["set-cookie"].lower()
+    assert "httponly" in cookie and "samesite=strict" in cookie
+    assert "path=/api/v1/auth" in cookie
+    token = response.json()
+    headers = {"authorization": "Bearer " + token["access_token"]}
+    assert client.get("/api/v1/workspaces", headers=headers).json() == {"items": []}
+    created = client.post("/api/v1/workspaces", headers=headers, json={"name": "My workspace"})
+    assert (
+        client.get("/api/v1/workspaces", headers=headers).json()["items"][0]["id"]
+        == created.json()["id"]
+    )
+    assert client.get("/api/v1/workspaces?limit=101", headers=headers).status_code == 422
+    assert (
+        client.delete(
+            "/api/v1/me/login-sessions/" + token["family_id"], headers=headers
+        ).status_code
+        == 204
+    )
+    assert client.get("/api/v1/me", headers=headers).status_code == 401

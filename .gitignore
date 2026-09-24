@@ -58,5 +58,11 @@ Thumbs.db
 
 # Sensitive files (auto-detected)
 .env
-.env.example
+!.env.example
+
+# Local database archives and private signing material
+*.dump
+*.backup
+*.pem
+*.key
 

@@ -1,10 +1,10 @@
 {
   "name": "elseview-frontend",
   "version": "1.0.0",
-  "description": "Elseview \u2014 See what you\u2019re missing.",
+  "description": "Elseview — See what you’re missing.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node --test *.test.js",
     "dev": "vite --host 0.0.0.0 --port 8080",
     "build": "vite build"
   },

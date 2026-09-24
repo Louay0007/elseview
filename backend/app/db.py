@@ -4,7 +4,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
 from app.config import Settings
 
-REVISION = "003_jobs"
+REVISION = "022_account_erasure"
 
 
 class Base(DeclarativeBase):
@@ -24,6 +24,7 @@ class AppMetadata(Base):
 
 class Database:
     def __init__(self, settings: Settings):
+        self.private_root = settings.private_root
         self.engine = create_engine(
             settings.database_url.get_secret_value(),
             pool_size=settings.db_pool_size,
@@ -40,6 +41,10 @@ class Database:
 
     def check_ready(self) -> bool:
         try:
+            from app.privacy_ops.restore import restore_ready
+
+            if not restore_ready(self.engine, self.private_root):
+                return False
             with self.engine.connect() as conn:
                 revision = conn.execute(text("SELECT version_num FROM alembic_version")).scalar()
                 conn.execute(text("SELECT key FROM app_metadata LIMIT 1"))

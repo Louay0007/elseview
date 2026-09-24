@@ -1,0 +1,32 @@
+.study-preview { max-width: 780px; margin: 3rem auto; padding: 1.5rem; font: 1rem/1.6 system-ui, sans-serif; color: #142923; background: #fff; }
+.study-preview * { box-sizing: border-box; }
+.study-preview [hidden] { display: none !important; }
+.study-preview .eyebrow { color: #3d5b50; font-size: .9rem; }
+.study-preview h1 { font-size: 2rem; line-height: 1.2; }
+.study-preview h2 { font-size: 1.4rem; line-height: 1.4; overflow-wrap: anywhere; }
+.study-preview .preview-notice { padding: 1rem; border-inline-start: 4px solid #245342; background: #eff6f2; }
+.study-preview fieldset { padding: 0; border: 0; min-width: 0; }
+.study-preview button, .study-preview .button { display: inline-block; padding: .7rem 1.2rem; min-height: 44px; background: #245342; color: #fff; border: 1px solid #245342; border-radius: 6px; font: inherit; text-decoration: none; cursor: pointer; }
+.study-preview button:disabled { cursor: not-allowed; opacity: .6; }
+.study-preview :focus-visible { outline: 3px solid #0876a1; outline-offset: 4px; }
+.study-preview .choice { display: flex; align-items: center; gap: .8rem; padding: .9rem; border: 1px solid #6b8077; border-radius: 6px; margin-block: .6rem; cursor: pointer; overflow-wrap: anywhere; }
+.study-preview .choice input { width: 20px; height: 20px; flex: 0 0 auto; accent-color: #245342; }
+.study-preview .field { display: grid; gap: .4rem; margin-block: 1rem; }
+.study-preview textarea, .study-preview select, .study-preview input[type=number] { width: 100%; min-height: 44px; border: 1px solid #6b8077; border-radius: 4px; padding: .7rem; font: inherit; color: inherit; background: white; }
+.study-preview textarea { min-height: 110px; resize: vertical; }
+.study-preview .preview-image { display: block; max-width: 100%; max-height: 440px; object-fit: contain; margin-inline: auto; }
+.study-preview .variants { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 1rem; }
+.study-preview .variant { display: flex; flex-direction: column; align-items: stretch; }
+.study-preview .actions { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; margin-block: 1rem; }
+.study-preview details { margin-block: 1.5rem; }
+.study-preview summary { cursor: pointer; min-height: 44px; padding-block: .6rem; }
+.study-preview [role=alert] { color: #9c2424; overflow-wrap: anywhere; }
+.study-preview .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.study-preview .first-click-stage { position: relative; width: 100%; }
+.study-preview .first-click-image { display: block; width: 100%; height: min(60vh, 440px); object-fit: contain; object-position: center; padding: 0; border: 0; touch-action: manipulation; }
+.study-preview .spatial-cursor { position: absolute; transform: translate(-50%, -50%); pointer-events: none; border-radius: 50%; background: #fff; color: #000; border: 2px solid #000; width: 26px; height: 26px; text-align: center; line-height: 20px; font-weight: bold; }
+.study-preview .source-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.study-preview button { margin: .2rem; }
+.study-preview input:not([type=radio]):not([type=checkbox]) { min-height: 44px; max-width: 100%; font: inherit; }
+@media (max-width: 600px) { .study-preview { margin: .5rem auto; padding: 1rem; } }
+@media (prefers-reduced-motion: reduce) { .study-preview * { scroll-behavior: auto; } }

@@ -67,7 +67,12 @@ class RequestBoundary:
                 started = True
                 status = message["status"]
                 message["headers"] = [
-                    *message.get("headers", []),
+                    *[
+                        (key, value)
+                        for key, value in message.get("headers", [])
+                        if key.lower()
+                        not in {b"x-request-id", b"cache-control", b"x-content-type-options"}
+                    ],
                     (b"x-request-id", request_id.encode()),
                     (b"cache-control", b"no-store"),
                     (b"x-content-type-options", b"nosniff"),
@@ -77,12 +82,35 @@ class RequestBoundary:
         async def reject(code, text, number):
             await error_response(code, text, request_id, number)(scope, receive, safe_send)
 
+        import re
+
+        streaming = scope["method"] == "PUT" and re.fullmatch(
+            r"/api/v1/workspaces/[0-9a-fA-F-]{36}/upload-intents/[0-9a-fA-F-]{36}/content",
+            scope.get("path", ""),
+        )
+        limit = 16 * 1024 * 1024 if streaming else self.limit
         try:
             length = headers.get(b"content-length")
             if length is not None and (not length.isdigit()):
                 return await reject("INVALID_CONTENT_LENGTH", "Invalid content length.", 400)
-            if length is not None and int(length) > self.limit:
+            if length is not None and int(length) > limit:
                 return await reject("PAYLOAD_TOO_LARGE", "Request body is too large.", 413)
+            if streaming:
+                received = 0
+
+                async def bounded_receive():
+                    nonlocal received
+                    message = await receive()
+                    received += len(message.get("body", b""))
+                    if received > limit:
+                        raise DomainError("PAYLOAD_TOO_LARGE", "Upload is too large.", 413)
+                    return message
+
+                import asyncio
+
+                async with asyncio.timeout(60):
+                    await self.app(scope, bounded_receive, safe_send)
+                return
             chunks, total = [], 0
             while True:
                 message = await receive()
@@ -167,6 +195,22 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings
     app.state.database = database
     app.state.started = False
+
+    @app.middleware("http")
+    async def restore_quarantine(request, call_next):
+        # Health alone is not an access boundary: direct API callers must also
+        # fail closed before an isolated restore has replayed its restrictions.
+        if (database.engine.url.database or "").endswith("_restore"):
+            import asyncio
+
+            from app.privacy_ops.restore import restore_ready
+
+            if not await asyncio.to_thread(restore_ready, database.engine, settings.private_root):
+                return error_response(
+                    "RESTORE_QUARANTINED", "Restore verification is required.", "restore", 503
+                )
+        return await call_next(request)
+
     from app.common.cache import Cache, RateLimiter
 
     app.state.cache = Cache(settings)
@@ -175,6 +219,49 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         database, settings, lambda email, purpose, raw: deliver_local(settings, email, purpose, raw)
     )
     app.include_router(auth_router)
+    from app.common.privacy_router import router as privacy_router
+
+    app.include_router(privacy_router)
+    from app.studies.router import router as studies_router
+
+    app.include_router(studies_router)
+    from app.collection.router import router as collection_router
+    from app.recruiting.router import router as recruiting_router
+
+    app.include_router(recruiting_router)
+    app.include_router(collection_router)
+    from app.analytics.router import router as analytics_router
+    from app.reviews.router import router as reviews_router
+
+    app.include_router(reviews_router)
+    app.include_router(analytics_router)
+    from app.ai.router import router as ai_router
+
+    app.include_router(ai_router)
+    from app.common.participant_consent import router as participant_consent_router
+
+    app.include_router(participant_consent_router)
+    from app.evaluation.router import router as evaluation_router
+    from app.longitudinal.router import router as longitudinal_router
+
+    app.include_router(longitudinal_router)
+    app.include_router(evaluation_router)
+    from app.billing.router import router as billing_router
+    from app.templates.router import router as templates_router
+
+    app.include_router(templates_router)
+    app.include_router(billing_router)
+    from app.collaboration.router import router as collaboration_router
+    from app.privacy_ops.router import router as privacy_ops_router
+
+    app.include_router(collaboration_router)
+    app.include_router(privacy_ops_router)
+    from app.privacy_ops.lifecycle_router import router as lifecycle_router
+
+    app.include_router(lifecycle_router)
+    from app.privacy_ops.account_router import router as account_router
+
+    app.include_router(account_router)
     from app.jobs.router import router as jobs_router
 
     app.include_router(jobs_router)
@@ -225,4 +312,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         expose_headers=["X-Request-ID"],
     )
     app.add_middleware(RequestBoundary, limit=settings.max_request_bytes)
+    from app.contracts import install
+
+    install(app)
     return app

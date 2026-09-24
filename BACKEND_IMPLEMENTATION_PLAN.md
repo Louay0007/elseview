@@ -3,7 +3,7 @@
 **Brand:** Elseview — See what you’re missing.
 
 **Date:** September 23, 2026.  
-**Status:** implementation plan only. The backend, migrations and application tests are not built or passing yet.
+**Status:** P01–P18 have development implementations and executed evidence. P19 has integrated automated acceptance and a ten-story test map, but unresolved combined browser/live-provider/production gates prevent unconditional final sign-off. See `/Users/user/Workspace/startup-act/docs/backend/IMPLEMENTATION_STATUS.md` and `/Users/user/Workspace/startup-act/docs/backend/P18_P19_ACCEPTANCE.md`. Commercial activation requires reviewed invoice/payment rules; live-provider/dialect evaluation, external transcription/sandbox connectors, production backup encryption and full browser accessibility/interaction validation remain external or disabled gates. Backend tests do not certify them. Checklists below describe acceptance criteria, not automatic evidence that every gate passed.
 
 ## 1. Goal, source documents and precedence
 
@@ -522,4 +522,4 @@ No provider/model has been supplied yet. Core development proceeds with a mock; 
 - PostgreSQL locking: https://www.postgresql.org/docs/16/sql-select.html
 - OpenAI-compatible client configuration: https://github.com/openai/openai-python
 
-This task creates the implementation plan and static documentation checks only. No backend test suite, migrations, running containers or live cloud validation are claimed. During implementation, record observed results instead of converting this checklist into assumed success.
+The original planning task created this plan and static documentation checks only. Subsequent P01–P05 implementation evidence is recorded separately in `docs/backend/IMPLEMENTATION_STATUS.md`; the remaining phase checklists are not executed results. No live cloud validation is claimed.

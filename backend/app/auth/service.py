@@ -27,6 +27,9 @@ from app.auth.security import (
 from app.common.errors import DomainError
 
 CAPABILITIES = {
+    "privacy.manage": {"owner", "admin"},
+    "assets.create": {"owner", "admin", "researcher"},
+    "studies.create": {"owner", "admin", "researcher"},
     "workspace.read": {"owner", "admin", "researcher", "reviewer", "viewer"},
     "members.read": {"owner", "admin"},
     "members.manage": {"owner", "admin"},
@@ -270,7 +273,9 @@ def create_workspace(session, user_id, name):
 
 def change_member(session, actor_id, workspace_id, member_id, role=None):
     # Lock workspace before reading roles: serializes last-owner removal and escalation checks.
-    session.scalar(select(Workspace).where(Workspace.id == workspace_id).with_for_update())
+    from app.common.privacy import lock_workspace
+
+    lock_workspace(session, workspace_id)
     actor = require_workspace(session, actor_id, workspace_id, "members.manage")
     target = session.scalar(
         select(Membership)
