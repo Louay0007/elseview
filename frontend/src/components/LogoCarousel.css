@@ -1,0 +1,34 @@
+.brand-showcase { color: #080808; padding: 40px 0 32px; }
+.brand-showcase h2 { margin: 0 auto 32px; padding: 0 24px; text-align: center; font-size: 40px; font-weight: 700; line-height: 1.2; letter-spacing: 0; }
+.brand-showcase__rows { width: 86%; max-width: 2000px; margin: auto; display: grid; gap: 16px; }
+.brand-showcase__track { display: flex; width: 200%; min-width: 2240px; animation: brand-showcase-scroll 60s linear infinite; }
+.brand-showcase__sequence { display: flex; align-items: center; justify-content: space-around; flex: 0 0 50%; }
+.brand-showcase__logo { flex: 1 1 0; min-width: 0; height: 124px; display: grid; place-items: center; padding: 0 12px; }
+.brand-showcase__logo img { display: block; width: 100%; max-width: 220px; height: 100%; object-fit: contain; filter: grayscale(1); }
+.brand-showcase__rows:hover .brand-showcase__track,
+.brand-showcase__rows[data-paused="true"] .brand-showcase__track { animation-play-state: paused; }
+.brand-showcase__caption { display: flex; justify-content: center; align-items: center; gap: 12px; margin: 12px 24px 0; color: #636363; font-size: 12px; line-height: 1.5; letter-spacing: 0; }
+.brand-showcase__toggle { display: grid; place-items: center; flex: 0 0 44px; height: 44px; border-radius: 50%; }
+.brand-showcase__toggle:hover { background: #f3f3f3; }
+.brand-showcase__toggle:focus-visible { outline: 2px solid #0a84ff; outline-offset: 2px; }
+@keyframes brand-showcase-scroll { to { transform: translateX(-50%); } }
+@media (min-width: 1800px) {
+  .brand-showcase { padding-top: 56px; padding-bottom: 40px; }
+  .brand-showcase h2 { font-size: 52px; margin-bottom: 40px; }
+  .brand-showcase__rows { gap: 24px; }
+  .brand-showcase__logo { height: 144px; }
+}
+@media (max-width: 639px) {
+  .brand-showcase { padding: 32px 0 24px; }
+  .brand-showcase h2 { font-size: 28px; margin-bottom: 20px; }
+  .brand-showcase__rows { width: 100%; gap: 8px; }
+  .brand-showcase__track { min-width: 1960px; }
+  .brand-showcase__logo { height: 92px; padding: 0 10px; }
+  .brand-showcase__caption { margin-top: 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .brand-showcase__track { animation: none; width: 100%; min-width: 0; }
+  .brand-showcase__sequence { flex: 1; flex-wrap: wrap; justify-content: center; }
+  .brand-showcase__sequence[aria-hidden="true"], .brand-showcase__toggle { display: none; }
+  .brand-showcase__logo { flex: 0 0 140px; }
+}

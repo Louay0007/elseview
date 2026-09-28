@@ -1,68 +1,81 @@
-.tools/
-.env
-.env.*
-!.env.example
-private/
-.private/
-__pycache__/
-*.py[cod]
-.venv/
-venv/
-.pytest_cache/
-.ruff_cache/
-.mypy_cache/
-.coverage
-.coverage.*
-htmlcov/
-coverage/
-node_modules/
-dist/
-build/
-*.egg-info/
-*.log
-.DS_Store
-artifacts/
-test-results/
-playwright-report/
-# Auto-generated entries
 # Dependencies
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
 
 # Build outputs
 dist/
+dist-ssr/
 build/
-*.log
+*.tsbuildinfo
+.vite/
 
-# Environment files
+# Frontend test / tool artifacts
+test-results/
+playwright-report/
+/playwright/.cache/
+coverage/
+.last-run.json
+
+# Logs
+*.log
+logs/
+
+# Environment & secrets (keep the example)
 .env
 .env.*
 !.env.example
+*.pem
+*.key
 
-# IDE files
+# Local database archives
+*.dump
+*.backup
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.pytest-ai/
+.pytest-ai-unit/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+*.egg-info/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors & IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
 
-# OS files
-.DS_Store
-Thumbs.db
-
-# Temporary files
+# Temporary / local-only
 *.tmp
 *.temp
 .cache/
+artifacts/
+output/
 
-# Sensitive files (auto-detected)
-.env
-!.env.example
-
-# Local database archives and private signing material
-*.dump
-*.backup
-*.pem
-*.key
-
+# Local evidence, snapshots, scratch harnesses (never commit)
+.evdb-fhpwc8nd/
+.ai-unit-check/
+.freebuff/
+.impeccable/
+.tools/
+private/
+.private/

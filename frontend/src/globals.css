@@ -1,0 +1,231 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: "Sk-Modernist";
+  src: url("/fonts/Sk-Modernist-Bold.otf") format("opentype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(calc(-100% - var(--gap))); }
+}
+
+@layer base {
+  :root {
+    --color-signal-blue: #0a84ff;
+    --color-deep-dusk: #001b45;
+    --color-azure-crest: #0066cc;
+    --color-hover-glow: #9bd0ff;
+    --color-ink-black: #000000;
+    --color-carbon: #1d1d1f;
+    --color-slate: #34343a;
+    --color-steel: #6e6e73;
+    --color-fog: #8e8e93;
+    --color-mist: #aeaeb2;
+    --color-vapor: #f2f2f7;
+    --color-frost: #f5f9ff;
+    --color-chalk: #ffffff;
+    --color-bone: rgba(60, 60, 67, 0.14);
+    --color-ash: rgba(60, 60, 67, 0.22);
+    --color-neon: #30d158;
+    --color-cyan-veil: #64d2ff;
+
+    --font-sf-pro-display: "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+    --font-heading: "Sk-Modernist", var(--font-sf-pro-display);
+    --font-body: "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+    --font-eb-garamond: var(--font-sf-pro-display);
+    --font-geist: var(--font-sf-pro-display);
+    --font-ui-monospace: "SFMono-Regular", ui-monospace, Menlo, Monaco, Consolas, monospace;
+
+    --text-caption: 11px;
+    --leading-caption: 1.35;
+    --text-body: 17px;
+    --leading-body: 1.47;
+    --tracking-body: -0.022em;
+    --text-subheading: 21px;
+    --leading-subheading: 1.28;
+    --tracking-subheading: -0.025em;
+    --text-heading-sm: 28px;
+    --leading-heading-sm: 1.18;
+    --tracking-heading-sm: -0.035em;
+    --text-heading: 40px;
+    --leading-heading: 1.1;
+    --tracking-heading: -0.04em;
+    --text-heading-lg: 56px;
+    --leading-heading-lg: 1.04;
+    --tracking-heading-lg: -0.045em;
+    --text-display: 88px;
+    --leading-display: 0.98;
+    --tracking-display: -0.055em;
+
+    --font-weight-light: 300;
+    --font-weight-regular: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+
+    --spacing-4: 4px;
+    --spacing-5: 5px;
+    --spacing-6: 6px;
+    --spacing-7: 7px;
+    --spacing-8: 8px;
+    --spacing-9: 9px;
+    --spacing-10: 10px;
+    --spacing-12: 12px;
+    --spacing-14: 14px;
+    --spacing-16: 16px;
+    --spacing-18: 18px;
+    --spacing-20: 20px;
+    --spacing-28: 28px;
+    --spacing-32: 32px;
+    --spacing-40: 40px;
+    --spacing-73: 73px;
+
+    --page-max-width: 1200px;
+    --section-gap: 72px;
+    --card-padding: 24px;
+    --element-gap: 8px;
+
+    --radius: 1.25rem;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    --radius-2xl: 24px;
+    --radius-3xl: 30px;
+    --radius-3xl-2: 36px;
+    --radius-full: 9999px;
+    --radius-cards: 22px;
+    --radius-pills: 9999px;
+    --radius-inputs: 14px;
+    --radius-buttons: 9999px;
+    --radius-feature-cards: 30px;
+    --radius-product-mockup: 26px;
+
+    --shadow-subtle: inset 0 1px 0 rgba(255,255,255,.5), 0 8px 24px rgba(0,75,180,.22);
+    --shadow-subtle-2: inset 0 1px 0 rgba(255,255,255,.28), 0 24px 70px rgba(0,25,80,.28);
+    --shadow-subtle-3: inset 0 1px 0 rgba(255,255,255,.42);
+    --shadow-lg: inset 0 1px 0 rgba(255,255,255,.12), inset 0 0 24px rgba(255,255,255,.03);
+    --shadow-lg-2: inset 0 1px 0 rgba(255,255,255,.8), 0 20px 50px rgba(45,80,130,.14);
+
+    --surface-canvas: #ffffff;
+    --surface-frost-tint: #f5f9ff;
+    --surface-vapor-layer: #f2f2f7;
+    --surface-bone-border: rgba(60, 60, 67, 0.14);
+
+    --background: 0 0% 100%;
+    --foreground: 240 3% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 3% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 3% 12%;
+    --primary: 210 100% 52%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 24% 96%;
+    --secondary-foreground: 240 3% 12%;
+    --muted: 213 100% 98%;
+    --muted-foreground: 240 2% 44%;
+    --accent: 213 100% 98%;
+    --accent-foreground: 240 3% 12%;
+    --destructive: 3 100% 59%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 6% 87%;
+    --input: 240 6% 87%;
+    --ring: 210 100% 52%;
+    --sidebar-background: 240 24% 97%;
+    --sidebar-foreground: 240 3% 20%;
+    --sidebar-primary: 210 100% 52%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 213 100% 98%;
+    --sidebar-accent-foreground: 240 3% 12%;
+    --sidebar-border: 240 6% 87%;
+    --sidebar-ring: 210 100% 52%;
+  }
+
+  * { @apply border-border; }
+  html { scroll-behavior: smooth; }
+  body {
+    @apply bg-background text-foreground antialiased;
+    min-width: 320px;
+    font-family: var(--font-body);
+    letter-spacing: -0.015em;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+    font-weight: 700;
+    font-synthesis: none;
+  }
+  button, input, textarea, select { font: inherit; }
+  ::selection { background: rgba(10, 132, 255, 0.22); }
+}
+
+@layer components {
+  .bluecrest-container {
+    width: min(calc(100% - 40px), var(--page-max-width));
+    margin-inline: auto;
+  }
+  .bluecrest-focus {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-blue focus-visible:ring-offset-2;
+  }
+  .liquid-glass {
+    background: linear-gradient(145deg, rgba(255,255,255,.66), rgba(255,255,255,.32));
+    border: 1px solid rgba(255,255,255,.58);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.88), 0 18px 55px rgba(30,70,130,.12);
+    backdrop-filter: blur(28px) saturate(180%);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+  }
+  .liquid-glass-dark {
+    background: linear-gradient(145deg, rgba(255,255,255,.16), rgba(255,255,255,.06));
+    border: 1px solid rgba(255,255,255,.22);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.28), 0 24px 70px rgba(0,23,70,.24);
+    backdrop-filter: blur(30px) saturate(170%);
+    -webkit-backdrop-filter: blur(30px) saturate(170%);
+  }
+  .workspace-app :is(button, a, input, textarea, select, [tabindex]):focus-visible {
+    outline: 2px solid var(--color-signal-blue);
+    outline-offset: 3px;
+  }
+  .workspace-app :is(input:not([type="checkbox"]):not([type="radio"]), textarea, button[role="combobox"]) {
+    border-radius: var(--radius-inputs);
+  }
+  .workspace-app .text-carbon\/45,
+  .workspace-app .text-carbon\/50,
+  .workspace-app .text-carbon\/55,
+  .workspace-app .text-carbon\/60 {
+    color: rgba(29, 29, 31, 0.7) !important;
+  }
+  .logo-marquee::before,
+  .logo-marquee::after {
+    content: "";
+    position: absolute;
+    z-index: 2;
+    top: 0;
+    bottom: 0;
+    width: clamp(72px, 14vw, 200px);
+    pointer-events: none;
+  }
+  .logo-marquee::before {
+    left: 0;
+    background: linear-gradient(to right, #ffffff 10%, rgba(255,255,255,.92) 35%, transparent 100%);
+  }
+  .logo-marquee::after {
+    right: 0;
+    background: linear-gradient(to left, #ffffff 10%, rgba(255,255,255,.92) 35%, transparent 100%);
+  }
+}
+
+@keyframes card-brand-in {
+  from { opacity: 0; transform: translateY(4px) scale(.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.card-brand-in {
+  animation: card-brand-in .28s cubic-bezier(.22,1,.36,1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-brand-in { animation: none; }
+}

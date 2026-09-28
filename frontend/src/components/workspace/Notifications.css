@@ -1,0 +1,133 @@
+:root {
+  --notif-ink: #000000;
+  --notif-grey: #6d6d70;
+  --notif-line: #e4e4e7;
+  --notif-blue: #1d4ed8;
+  --notif-link: #1d4ed8;
+}
+
+.notif-body {
+  padding: 8px 116px 24px;
+}
+
+.notif-title {
+  margin: 0;
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--notif-ink);
+}
+
+.notif-rule {
+  margin: 32px 0 40px;
+  border: 0;
+  border-top: 1px solid var(--notif-line);
+}
+
+.notif-section {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--notif-ink);
+}
+
+.notif-lead {
+  margin: 16px 0 0;
+  font-size: 17px;
+  font-weight: 500;
+  color: var(--notif-ink);
+}
+
+.notif-divider {
+  max-width: 800px;
+  margin: 40px 0;
+  border: 0;
+  border-top: 1px solid var(--notif-line);
+}
+
+.notif-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 32px;
+  max-width: 800px;
+  margin-bottom: 56px;
+}
+
+.notif-row__title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--notif-ink);
+}
+
+.notif-row__copy {
+  margin: 16px 0 0;
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--notif-grey);
+}
+
+.notif-link {
+  color: var(--notif-link);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.notif-link:hover {
+  color: #1e40af;
+}
+
+.notif-switch {
+  position: relative;
+  width: 52px;
+  height: 30px;
+  flex-shrink: 0;
+  margin-top: 44px;
+  border: 0;
+  border-radius: 999px;
+  background: #d4d4d8;
+  cursor: pointer;
+  transition: background 160ms ease;
+}
+
+.notif-switch--on {
+  background: var(--notif-blue);
+}
+
+.notif-switch:focus-visible {
+  outline: 2px solid var(--notif-blue);
+  outline-offset: 2px;
+}
+
+.notif-switch__thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: transform 160ms ease;
+}
+
+.notif-switch--on .notif-switch__thumb {
+  transform: translateX(22px);
+}
+
+@media (max-width: 900px) {
+  .notif-body {
+    padding: 4px 0 0;
+  }
+
+  .notif-row {
+    gap: 20px;
+  }
+}
+
+.notif-error {
+  margin: 16px 0 0;
+  font-size: 14px;
+  color: #b42318;
+}

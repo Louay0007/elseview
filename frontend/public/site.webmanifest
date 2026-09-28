@@ -1,0 +1,21 @@
+{
+  "name": "Elseview — User Research & AI-Powered Testing",
+  "short_name": "Elseview",
+  "description": "See beyond assumptions. Explore user research and AI-powered testing for clearer product decisions.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#07172f",
+  "icons": [
+    {
+      "src": "/images/brand/elseview-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/images/brand/elseview-logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

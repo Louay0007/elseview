@@ -1,0 +1,22 @@
+/* Welcome to Elseview — gradient banner.
+ * Generated image: public/images/workspace/welcome-banner-blue.png
+ * (prompt preserved in docs/workspace-welcome-banner-prompt.md).
+ */
+.welcome-banner {
+  background-color: #1a2b6d;
+  background-image: url("/images/workspace/welcome-banner-blue.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  position: relative;
+  overflow: hidden;
+}
+
+.welcome-banner::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(to bottom, rgba(26, 43, 109, 0) 55%, rgba(26, 43, 109, 0.12) 100%);
+  pointer-events: none;
+}
