@@ -3,14 +3,10 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 import { LogoCarousel } from "./LogoCarousel";
-import { MediterraBrandStatement } from "./MediterraBrandStatement";
-import { MediterraCareRelay } from "./MediterraCareRelay";
 import { MediterraFaq } from "./MediterraFaq";
 import { MediterraFooter } from "./MediterraFooter";
 import { MediterraMinimalistHero } from "./MediterraMinimalistHero";
 import { MediterraLogo } from "./MediterraLogo";
-import { MediterraAnimatedNetwork } from "./MediterraAnimatedNetwork";
-import { WorkflowSection } from "./WorkflowSection";
 import TestimonialMarquee from "./ui/marquee-01";
 import SmoothScroll from "./ui/smooth-scroll";
 
@@ -23,10 +19,11 @@ vi.mock("react", async (importOriginal) => {
   };
 });
 
+// Only the sections src/pages/Index.tsx actually mounts. Asserting on unmounted
+// components tested copy no user could ever see.
 const components = [
-  LogoCarousel, MediterraBrandStatement, MediterraCareRelay, MediterraFaq,
-  MediterraFooter, MediterraMinimalistHero, MediterraAnimatedNetwork,
-  WorkflowSection, TestimonialMarquee, SmoothScroll,
+  LogoCarousel, MediterraFaq, MediterraFooter, MediterraMinimalistHero,
+  TestimonialMarquee, SmoothScroll,
 ];
 const render = (component: (typeof components)[number]) => renderToStaticMarkup(createElement(component));
 const readableCopy = (html: string) => html
@@ -39,15 +36,14 @@ describe("Elseview landing copy", () => {
     expect(readableCopy(html)).not.toMatch(/Mediterra|clinical|care network|trusted specialist|patient need/i);
     expect(html).not.toMatch(/(?:aria-label|alt)="[^"]*Mediterra/i);
     expect(readableCopy(html)).toContain("Elseview");
-    // Legacy anchors and image paths deliberately stay intact.
-    expect(html).toContain('id="about-mediterra"');
+    // Legacy image paths deliberately stay intact.
     expect(html).toContain("/images/hero/elseview-research-session.png");
     expect(html).toContain('width="1536" height="2304"');
     expect(html).toContain('alt="Illustrative user research session:');
   });
 
   it("uses the supplied Elseview mark across every brand placement", () => {
-    for (const component of [MediterraMinimalistHero, MediterraFooter, MediterraBrandStatement, MediterraAnimatedNetwork]) {
+    for (const component of [MediterraMinimalistHero, MediterraFooter]) {
       const html = render(component);
       expect(html).toContain('src="/images/brand/elseview-logo.png"');
       expect(html).not.toContain("/images/brand/mediterra-");
@@ -98,7 +94,7 @@ describe("Elseview landing copy", () => {
     const html = render(SmoothScroll);
     expect(readableCopy(html)).toContain("not evidence of what real users think");
     expect(readableCopy(html)).toContain("AI-generated signals need human validation");
-    expect(readableCopy(render(MediterraCareRelay))).toContain("not results from a live study");
+    expect(readableCopy(html)).toContain("illustrate a workflow, not measured results");
   });
 
   it("does not promise an email subscription before or after demo submission", () => {

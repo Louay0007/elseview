@@ -1,6 +1,10 @@
 # Elseview frontend
 
-React 19, TypeScript, Vite, Tailwind CSS and shadcn/ui. The frontend holds the landing page, the authentication flow, and two separate product spaces: the **researcher** workspace and the **tester** space.
+React 19, TypeScript, Vite, Tailwind CSS and shadcn/ui. Holds the landing page, the authentication flow, and two separate product spaces: the **researcher** workspace and the **tester** space.
+
+See the [repository README](../README.md) for what Elseview is and where the product stands.
+
+> **Status:** this is an interactive preview. The landing page and auth flow are complete; workspace and tester screens render demonstration data, and the auth flow does not establish identity. Use fictional information only.
 
 Every path lives in [`src/lib/routes.ts`](src/lib/routes.ts). No component writes a path literal — they import the table and use `withQuery`/`authRoute` to attach query parameters. Adding or renaming a route is a one-line change there, and `src/lib/auth.test.ts` fails if a route stops being served or a link loses its destination.
 
