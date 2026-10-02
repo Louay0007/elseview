@@ -3,6 +3,7 @@ import { useState, type FormEvent } from "react";
 import { RuixenGradientFooter } from "@/components/ui/ruixen-gradient-footer";
 import { MediterraLogo } from "@/components/MediterraLogo";
 import { useOptionalAuthLocale } from "@/components/auth/AuthLocale";
+import { authRoute, routes } from "@/lib/routes";
 
 export function MediterraFooter() {
   const [submitted, setSubmitted] = useState(false);
@@ -11,8 +12,8 @@ export function MediterraFooter() {
   const columns = [
     { title: text({ en: "Research", fr: "Recherche" }), links: [{ label: text({ en: "Research principles", fr: "Principes de recherche" }), href: "#future-content" }] },
     { title: text({ en: "Explore", fr: "Explorer" }), links: [{ label: text({ en: "Use cases", fr: "Cas d’usage" }), href: "#testimonial-heading" }, { label: text({ en: "Questions", fr: "Questions" }), href: "#faq" }, { label: text({ en: "Back to top", fr: "Haut de page" }), href: "#top" }] },
-    { title: text({ en: "Company", fr: "Société" }), links: [{ label: text({ en: "Start as researcher", fr: "Commencer chercheur" }), href: "/auth/signup?role=researcher" }, { label: text({ en: "Join as tester", fr: "Rejoindre testeur" }), href: "/auth/signup?role=tester" }, { label: text({ en: "Sign in", fr: "Se connecter" }), href: "/auth/login" }] },
-    { title: text({ en: "Pricing", fr: "Tarifs" }), links: [{ label: text({ en: "Buy credits", fr: "Acheter des crédits" }), href: "/workspace/credits/buy" }, { label: text({ en: "How credits work", fr: "Comprendre les crédits" }), href: "/workspace/credits/buy" }] },
+    { title: text({ en: "Company", fr: "Société" }), links: [{ label: text({ en: "Start as researcher", fr: "Commencer chercheur" }), href: authRoute("signup", "researcher") }, { label: text({ en: "Join as tester", fr: "Rejoindre testeur" }), href: authRoute("signup", "tester") }, { label: text({ en: "Sign in", fr: "Se connecter" }), href: routes.login }] },
+    { title: text({ en: "Pricing", fr: "Tarifs" }), links: [{ label: text({ en: "Buy credits", fr: "Acheter des crédits" }), href: routes.buyCredits }, { label: text({ en: "How credits work", fr: "Comprendre les crédits" }), href: routes.buyCredits }] },
     { title: text({ en: "Information", fr: "Informations" }), links: [{ label: text({ en: "Data guidance", fr: "Guide des données" }), href: "#faq" }, { label: text({ en: "Preview limits", fr: "Limites de l’aperçu" }), href: "#faq" }, { label: text({ en: "AI guidance", fr: "Guide IA" }), href: "#faq" }] },
   ];
 

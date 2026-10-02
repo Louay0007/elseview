@@ -44,7 +44,7 @@ def test_options(arguments):
     if not with_cache:
         marker += " and not cache"
     if not with_browser:
-        marker += " and not browser"
+        marker += " and not browser and not frontend"
     return with_cache, ["-m", marker, *selectors]
 
 
@@ -261,6 +261,7 @@ def main():
                     "JOB_RUNNER_ENABLED": "false",
                     "MAIL_MODE": "local",
                     "COLLABORATION_INTEGRATION_MODE": "disabled",
+                    "ELSEVIEW_TEST_POSTGRES_CONTAINER": name,
                 }
             )
             with fresh_cache(compose, private_scratch, with_cache) as cache_url:

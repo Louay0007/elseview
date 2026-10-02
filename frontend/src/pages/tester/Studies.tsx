@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuthLocale } from "@/components/auth/AuthLocale";
-import { BackToTesterHome, TesterShell } from "@/components/tester/TesterShell";
+import { TesterShell } from "@/components/tester/TesterShell";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { mockStudies } from "./testerMocks";
 type Item = { id: string; title: string; method: string; credits: number; minutes: number; languages: string[] };
@@ -11,7 +11,6 @@ export default function TesterStudies() {
   const apply = (id: string) => { setErr(null); setBooked((b) => [...b, id]);
     setMsg(text({ en: "Booked. See Sessions.", fr: "Réservé. Voir Séances." })); };
   return (<TesterShell>
-    <BackToTesterHome />
     <h1 className="text-[28px] font-bold text-black">{text({ en: "Studies for you.", fr: "Études pour vous." })}</h1>
     <p className="mt-2 max-w-[68ch] text-[16px] text-[#6d6d70]">{text({ en: "Pick one. Answer honestly.", fr: "Choisissez-en une. Répondez honnêtement." })}</p>
     {err && <p role="alert" className="mt-4 rounded-lg bg-[#fff2ef] px-4 py-3 text-sm text-[#9c2d20]">{err}</p>}

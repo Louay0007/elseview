@@ -2,11 +2,12 @@ import { useEffect, useState } from "react";
 import { ArrowUpRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MediterraLogo } from "@/components/MediterraLogo";
+import { authRoute, routes } from "@/lib/routes";
 
 const navigation = [
   { label: "How it works", href: "#how-it-works" },
   { label: "Questions", href: "#faq" },
-  { label: "Pricing", href: "/workspace/credits/buy" },
+  { label: "Pricing", href: routes.buyCredits },
 ];
 
 export function MediterraHeader() {
@@ -62,7 +63,7 @@ export function MediterraHeader() {
 
         <div className="hidden justify-self-end md:block">
           <a
-            href="/auth/signup?role=researcher"
+            href={authRoute("signup", "researcher")}
             className={cn(
               "bluecrest-focus inline-flex h-9 items-center gap-1.5 rounded-full px-4 text-[13px] font-semibold tracking-[-0.015em] transition-all duration-300",
               isScrolled

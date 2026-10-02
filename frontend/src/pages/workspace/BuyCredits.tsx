@@ -140,37 +140,26 @@ export default function BuyCredits() {
   );
 
   return (
-    <WorkspaceShell
-      workspaceName={workspaceName}
-      displayName={displayName}
-      firstName={firstName}
-      role={role}
-      onSettings={() => goWithParams("/settings")}
-      onBilling={() => goWithParams("/workspace/billing")}
-      onCredits={() => goWithParams("/workspace/credits")}
-      onAccount={() => goWithParams("/account")}
-      onNotifications={() => goWithParams("/account/notifications")}
-      onRefer={() => goWithParams("/account/refer")}
-    >
+      <WorkspaceShell >
       <div className="buy-body">
-        <h1 className="buy-title">{text({ en: "Buy Credits", fr: "Acheter des crédits" })}</h1>
-        <hr className="buy-rule" />
+      <h1 className="buy-title">{text({ en: "Buy Credits", fr: "Acheter des crédits" })}</h1>
+      <hr className="buy-rule" />
 
-        <div className="buy-panel">
-          <div className="buy-left">
-            <h2 className="buy-need">{text({ en: "How many credits do you need?", fr: "De combien de crédits avez-vous besoin ?" })}</h2>
-            <p className="buy-minimum">
+      <div className="buy-panel">
+      <div className="buy-left">
+      <h2 className="buy-need">{text({ en: "How many credits do you need?", fr: "De combien de crédits avez-vous besoin ?" })}</h2>
+      <p className="buy-minimum">
               {text({
                 en: "Min. 50 credits per buy.",
                 fr: "Un minimum de 50 crédits est requis par transaction.",
               })}
-            </p>
+      </p>
 
-            <div className="buy-field">
-              <label className="buy-field__label" htmlFor="buy-credits">
+      <div className="buy-field">
+      <label className="buy-field__label" htmlFor="buy-credits">
                 {text({ en: "Credits", fr: "Crédits" })}
-              </label>
-              <input
+      </label>
+      <input
                 id="buy-credits"
                 className="buy-field__input"
                 value={credits}
@@ -183,51 +172,51 @@ export default function BuyCredits() {
                 onChange={(event) => setCredits(event.target.value.replace(/[^\d]/g, "").slice(0, 7))}
                 onBlur={() => setTouched(true)}
               />
-            </div>
-            <p className="buy-rate">
+      </div>
+      <p className="buy-rate">
               {text({ en: `1 credit=${moneyFormat.format(quote.unit)}`, fr: `1 crédit = ${moneyFormat.format(quote.unit)}` })}
-            </p>
-            <p className="buy-discount">
+      </p>
+      <p className="buy-discount">
               {text({ en: "Get up to", fr: "Jusqu’à" })}{" "}
-              <strong>{text({ en: "20%", fr: "20 %" })}</strong>{" "}
+      <strong>{text({ en: "20%", fr: "20 %" })}</strong>{" "}
               {text({ en: "discount on bulk amount", fr: "de remise sur les achats en volume" })}
-            </p>
+      </p>
             {touched && !valid && (
-              <p id="buy-credits-error" role="alert" className="buy-error">
+      <p id="buy-credits-error" role="alert" className="buy-error">
                 {text({
                   en: "Enter at least 50 credits.",
                   fr: "Saisissez au moins 50 crédits.",
                 })}
-              </p>
+      </p>
             )}
 
-            <div className="buy-summary">
-              <div>
-                <p className="buy-summary__label">
+      <div className="buy-summary">
+      <div>
+      <p className="buy-summary__label">
                   {text({ en: `Price for ${numberFormat.format(safeCredits)} credits`, fr: `Prix pour ${numberFormat.format(safeCredits)} crédits` })}
-                </p>
-                <p className="buy-summary__price">{moneyFormat.format(quote.total)}</p>
-              </div>
-              <p className="buy-summary__deposit">
+      </p>
+      <p className="buy-summary__price">{moneyFormat.format(quote.total)}</p>
+      </div>
+      <p className="buy-summary__deposit">
                 {text({ en: "Credits will be deposited into", fr: "Les crédits seront ajoutés à" })}
-                <span className="buy-summary__workspace">{workspaceName}</span>
-              </p>
-            </div>
+      <span className="buy-summary__workspace">{workspaceName}</span>
+      </p>
+      </div>
             {buyError && <p role="alert" className="buy-error">{buyError}</p>}
             {receipt && <p role="status" className="buy-receipt">{text({ en: "Purchase recorded. Credits are on the way.", fr: "Achat enregistré. Crédits en route." })}</p>}
-            <button type="button" className="buy-checkout" disabled={!valid || buying} onClick={checkout}>
+      <button type="button" className="buy-checkout" disabled={!valid || buying} onClick={checkout}>
               {text({ en: "Check out", fr: "Payer" })}
-            </button>
-          </div>
+      </button>
+      </div>
 
-          <div className="buy-right">
-            <div className="buy-table-head" aria-hidden="true">
-              <span>{text({ en: "Credits", fr: "Crédits" })}</span>
-              <span>{text({ en: "Price per credit", fr: "Prix par crédit" })}</span>
-              <span>{text({ en: "Buy it for", fr: "Acheter pour" })}</span>
-            </div>
+      <div className="buy-right">
+      <div className="buy-table-head" aria-hidden="true">
+      <span>{text({ en: "Credits", fr: "Crédits" })}</span>
+      <span>{text({ en: "Price per credit", fr: "Prix par crédit" })}</span>
+      <span>{text({ en: "Buy it for", fr: "Acheter pour" })}</span>
+      </div>
             {TIERS.map((tier) => (
-              <button
+      <button
                 key={tier.credits}
                 type="button"
                 className={safeCredits === tier.credits ? "buy-tier buy-tier--active" : "buy-tier"}
@@ -237,36 +226,36 @@ export default function BuyCredits() {
                   setTouched(true);
                 }}
               >
-                <span className="buy-tier__credits">
+      <span className="buy-tier__credits">
                   {numberFormat.format(tier.credits)}
-                  <span className="buy-tier__save">
+      <span className="buy-tier__save">
                     {text({ en: `Save ${tier.discount}%`, fr: `-${tier.discount} %` })}
-                  </span>
-                </span>
-                <span className="buy-tier__unit">
+      </span>
+      </span>
+      <span className="buy-tier__unit">
                   {moneyFormat.format(tier.unit)}
                   {text({ en: "/credit", fr: "/crédit" })}
-                </span>
-                <span className="buy-tier__total">{moneyFormat.format(tier.total)}</span>
-              </button>
+      </span>
+      <span className="buy-tier__total">{moneyFormat.format(tier.total)}</span>
+      </button>
             ))}
-            <p className="buy-note">
+      <p className="buy-note">
               {text({
                 en: "You can use credits to recruit participants from the Elseview panel for your tests at any time. Plus, they don’t expire – so take advantage of bulk-buying discounts now.",
                 fr: "Vous pouvez utiliser vos crédits à tout moment pour recruter des participants du panel Elseview. De plus, ils n’expirent pas : profitez dès maintenant des remises sur les achats en volume.",
               })}
-            </p>
-          </div>
-        </div>
+      </p>
+      </div>
+      </div>
 
-        <section aria-labelledby="buy-faq-heading" className="buy-faq">
-          <h2 id="buy-faq-heading" className="buy-faq__title">{text({ en: "FAQs", fr: "FAQ" })}</h2>
+      <section aria-labelledby="buy-faq-heading" className="buy-faq">
+      <h2 id="buy-faq-heading" className="buy-faq__title">{text({ en: "FAQs", fr: "FAQ" })}</h2>
           {FAQS.map((faq, index) => {
             const open = openFaq[index];
             return (
-              <div key={text(faq.question)} className="buy-faq__item">
-                <h3>
-                  <button
+      <div key={text(faq.question)} className="buy-faq__item">
+      <h3>
+      <button
                     type="button"
                     className="buy-faq__button"
                     aria-expanded={open}
@@ -274,28 +263,28 @@ export default function BuyCredits() {
                   >
                     {text(faq.question)}
                     {open ? <Minus className="buy-faq__icon" aria-hidden="true" /> : <Plus className="buy-faq__icon" aria-hidden="true" />}
-                  </button>
-                </h3>
+      </button>
+      </h3>
                 {open && (
-                  <div className="buy-faq__answer">
+      <div className="buy-faq__answer">
                     {faq.paragraphs.map((paragraph) => (
-                      <p key={paragraph.en}>{text(paragraph)}</p>
+      <p key={paragraph.en}>{text(paragraph)}</p>
                     ))}
                     {faq.bullets && (
-                      <ul>
+      <ul>
                         {faq.bullets.map((bullet) => (
-                          <li key={bullet.en}>{text(bullet)}</li>
+      <li key={bullet.en}>{text(bullet)}</li>
                         ))}
-                      </ul>
+      </ul>
                     )}
                     {faq.closing && <p>{text(faq.closing)}</p>}
-                  </div>
+      </div>
                 )}
-              </div>
+      </div>
             );
           })}
-        </section>
+      </section>
       </div>
-    </WorkspaceShell>
+      </WorkspaceShell>
   );
 }

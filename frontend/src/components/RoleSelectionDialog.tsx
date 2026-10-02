@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useOptionalAuthLocale } from "@/components/auth/AuthLocale";
+import { authRoute, routes } from "@/lib/routes";
 
 interface RoleSelectionDialogProps {
   open: boolean;
@@ -28,10 +29,10 @@ export function RoleSelectionDialog({ open, onOpenChange }: RoleSelectionDialogP
             </DialogDescription>
             <div className="mt-7 flex flex-wrap items-center gap-5">
               <Button asChild className="h-11 rounded-full bg-black px-6 text-[13px] hover:bg-carbon">
-                <a href="/auth/login?role=researcher">{text({ en: "Sign in", fr: "Se connecter" })}</a>
+                <a href={authRoute("login", "researcher")}>{text({ en: "Sign in", fr: "Se connecter" })}</a>
               </Button>
               <a
-                href="/auth/signup?role=researcher"
+                href={authRoute("signup", "researcher")}
                 className="inline-flex min-h-11 items-center gap-1 text-[13px] font-semibold text-[#273665] transition-colors hover:text-[#183a68]"
               >
                 {text({ en: "Create an account", fr: "Créer un compte" })} <ArrowRight aria-hidden="true" className="h-3.5 w-3.5" />
@@ -48,10 +49,10 @@ export function RoleSelectionDialog({ open, onOpenChange }: RoleSelectionDialogP
             </DialogDescription>
             <div className="mt-7 flex flex-wrap items-center gap-5">
               <Button asChild className="h-11 rounded-full bg-black px-6 text-[13px] hover:bg-carbon">
-                <a href="/auth/login?role=tester">{text({ en: "Sign in", fr: "Se connecter" })}</a>
+                <a href={authRoute("login", "tester")}>{text({ en: "Sign in", fr: "Se connecter" })}</a>
               </Button>
               <a
-                href="/auth/signup?role=tester"
+                href={authRoute("signup", "tester")}
                 className="inline-flex min-h-11 items-center gap-1 text-[13px] font-semibold text-[#273665] transition-colors hover:text-[#183a68]"
               >
                 {text({ en: "Create an account", fr: "Créer un compte" })} <ArrowRight aria-hidden="true" className="h-3.5 w-3.5" />

@@ -2,7 +2,94 @@
 
 **Brand:** Elseview — See what you’re missing.
 
-**Status:** P01–P18 have development test evidence; P19 adds integrated acceptance with explicit remaining release gates. Phase evidence and limitations are in `/Users/user/Workspace/startup-act/docs/backend/IMPLEMENTATION_STATUS.md` and `P18_P19_ACCEPTANCE.md`. This inventory accompanies `/Users/user/Workspace/startup-act/BACKEND_IMPLEMENTATION_PLAN.md`; the universal matrix is not a claim that every case has run. Older executed-inventory paragraphs record historical checkpoints.
+**Status:** inventory through schema 039, with local development evidence and explicit live/production gates. Current evidence and limitations are in [Implementation status](IMPLEMENTATION_STATUS.md); older P18/P19 checkpoints are in [P18/P19 acceptance](P18_P19_ACCEPTANCE.md). This inventory accompanies the [backend implementation plan](../../BACKEND_IMPLEMENTATION_PLAN.md). The universal matrix is not a claim that every possible case has run. Older executed-inventory paragraphs are historical checkpoints.
+
+## Current connected-workflow increment — schema 039
+
+Migration `039_connected_workflows` adds **three physical tables**, bringing the
+loaded ORM inventory to **113 tables**, and extends the existing consent-purpose/
+restore-event checks. It reuses `jobs`, `job_attempts`,
+`usage_budgets`, recording segments and the existing privacy registry; no parallel
+queue or ungoverned transcript store is introduced. The earlier schema-038 sections
+below are historical. Vendor selection is resolved, not an outstanding code blocker.
+
+| Physical models / projection | Invariants and actual tests |
+|---|---|
+| `connector_grants` | Immutable workspace/actor/provider/resource/mode/scopes; encrypted secret bound to tenant/grant/provider; single-use nonce plus login-family/browser binding; explicit refresh/revocation and restore removal. `test_connected.py::test_credentials_are_encrypted_and_bound_to_tenant_and_grant`, `test_oauth_nonce_pkce_encryption_refresh_and_revocation`, and safety tests for missing callback cookie and disabled-mode local revocation. |
+| `connected_runs` | Hashed idempotency commands; immutable request/source policy; workspace/actor scope; source freshness, consent, expiry and legal holds; bounded deadlines and safe explicit recovery. Core duplicate/foreign-tenant/budget tests, research transcription/booking tests, safety recovery/retention/fixture-drift tests. |
+| `connected_steps` | Unique run/ordinal, immutable output/provenance, job lease fencing, per-step budget reservation, no blind paid replay, reconciliation, hold-safe scrub. Core durable-turn/SQL immutability/cancellation/uncertain-cost tests; research pre-send retry and lost-lease tests; safety late-result and follow-up authorization tests. |
+| Existing recordings, consent and lineage | Added `transcription` purpose uses version-scoped consent. Automatic output attaches to existing immutable segments and exposes machine provenance. `test_automatic_transcription_exact_consent_provenance_and_revoke` and `test_transcription_consent_withdrawal_before_dispatch_never_calls_provider` exercise full API/worker/DB flows. The existing held-recording unit double now verifies the new invalidation hook without dropping its previous assertions. |
+| Remote operations / fixed protocols | `test_connected_protocol.py`: bounded OpenAI multipart transcription, fixed fictional messages, no tools, OAuth exchange/rotation/revocation for selected profiles, Figma depth/URL rejection, Google ETag/no-invitation reconciliation, Linear stable-ID lookup/create and ownership-checked delete. All are intercepted `httpx` protocol tests, **not vendor sandbox/live evidence**. |
+| Restore / retention / authorization | Core erasure-event replay and restored-uncertain-reservation tests; research held-output and consent-withdrawal tests; `test_study_withdrawal_fences_new_and_claimed_provider_work` covers both transcription and calendar without relying on an epoch change; safety expiry/purge and disabled-mode secret removal. Existing real backup/restore, subject/account/study erasure and migration suites additionally exercise the registered hooks. Holds retain offline evidence; credential capabilities are cleared. |
+| Worker / operational projections | Existing job queue regression plus `test_embedded_runner_dispatches_all_durable_sandbox_steps`, `test_workspace_writes_and_cancellation_progress_while_provider_waits`, `test_every_followup_http_operation_rechecks_source_authority`, and scoped connected-summary assertions. HTTP body completion releases the dispatch fence; no provider wait retains the workspace write fence. |
+
+D01/D02 cover happy/failure/strict-input boundaries; D03 immutable/unique database
+constraints; D04 tenant/current privilege checks; D05 uncertainty and lifecycle
+transitions; D06 consent/retention/hold/erasure; D07 simultaneous commands and
+reservation races; D08 private projections/no secret serialization; D09 migration
+round-trip/schema agreement; D10 producer/runtime/restore integration. The new
+financial tests additionally prove one reservation under concurrent commands and
+redacted, audited reconciliation by another admin after requester erasure. Shared locking/authorization primitives retain
+the existing regression evidence; the table does not imply every possible vendor
+failure or production concurrency scale has been exercised.
+
+Evidence checkpoints: **52 initial core/protocol/migration cases**, **5 research lifecycle
+cases**, **41 existing-job/new-safety cases** passed in isolated resources (overlap).
+Final aggregate: **1,609 passed, 1 host FFmpeg skip, 5 frontend/browser/load
+exclusions**; the skip passed in the rebuilt image (**101 passed, 7 database
+cases deselected**, no skips). Final financial/migration/schema/API checks:
+**12 passed**. There are **70 new connected-workflow test cases**. Exact commands,
+counts and production boundaries are in [implementation status](IMPLEMENTATION_STATUS.md). All selected adapters remain
+**implemented but awaiting live validation**. No arbitrary chatbot, diarization,
+human correction editor, unrestricted two-way synchronization or frontend renderer
+is represented as implemented by these tests. Figma manual revoke, provider retention
+and real accounts/rates/deletion verification remain external production gates.
+
+## Completion increments through schema 038
+
+| Physical models / contract | Regression evidence |
+|---|---|
+| `webhook_deliveries`, transactional study/report events (`030`) | `test_domain_webhooks_db.py`: rollback, replay identity, current authority, signing secret, dispatch fencing |
+| `ai_runs`, `ai_steps`, `ai_run_inputs`, `ai_commands` (`029`, `031`, `035`) | `test_ai_orchestration*`, `test_ai_subgroups.py`: multistep accounting, shared subgroup release, minimum groups, requester aliases; `test_ai_benchmark.py`: synthetic multilingual rubric |
+| `diary_occurrences` immutable prompt plans (`032`) | `test_longitudinal_prompts.py`, `test_longitudinal_db.py`, `test_longitudinal_rewards_db.py`: subsets, answers, recovery, consent and accounting |
+| `billing_managed_requests`, `billing_managed_quotes` (`033`) | `test_billing_managed_db.py`: scoped intake, reviewed quote, acceptance/invoice and cancellation |
+| `assets`, `recordings`, `transcript_segments`, evaluation voice sources (`034`, `036`) | `test_media_voice.py`, `test_media_response.py`, media migration tests: bounded WAV/MP4 validation, ranges, exact transcript provenance and WER/CER; actual FFmpeg image validation recorded in status |
+| `billing_credit_purchases`, `billing_usage.credit_purchase_id` (`037`) | `test_software_credits_db.py`: payment activation, tax snapshots, included-first/FIFO allocation, concurrent reservations, release/refund, SQL immutability and quota enforcement |
+| `interview_drafts`, `report_interview_drafts` (`038`) | `test_longitudinal_db.py`: exact-span review, report attachment, raw export, withdrawal invalidation; migration round trips |
+| Derived dataset privacy and restore journal | `test_recording_retention_db.py`: expired source purge, unrelated legal hold/release, idempotent deletion replay; `test_physical_archive_db.py`: actual pg_dump/pg_restore, private bytes, quarantine and post-snapshot replay |
+| Operational summary and public API projections | `test_operations_db.py`, `test_api_contract.py`: admin-only queue health, response schemas, authentication schemes and checked OpenAPI |
+
+These tests use isolated databases and synthetic data. They do not certify live
+provider quality, production backup custody or integrated frontend behavior.
+
+## Backend continuation at schema 038 — operational observations
+
+No migration, new physical table, transcript, credential, remote-operation record
+or personal-data artifact was added. The new fields are read-only projections of
+existing `jobs`, `notification_deliveries`, `webhook_deliveries`, `usage_budgets`,
+`ai_runs` and `ai_attempts`, plus process-local nonpersistent worker health.
+
+| Contract / matrix scope | Exact test evidence in `test_operations_health.py` |
+|---|---|
+| Worker status and recovery, D01/D02/D05/D10 | `test_runner_health_tracks_errors_recovery_and_stop`, `test_runner_health_restore_gate_is_not_successful_dispatch`, `test_runner_health_detects_stall_and_quarantine_without_restarting`: transient poll failure/recovery, sanitized event logs, restore fence, stalled work, permanent quarantine and no implicit restart |
+| Queue deadline / bounded settings, D01/D02 | `test_operations_reports_actual_worker_and_due_queue_lag`, three cases in `test_queue_warning_configuration_is_bounded`: due versus future work, stopped/configured distinction and no-store projection |
+| Tenant/privacy scope and safe projection, D04/D06/D08/D10 | `test_provider_costs_do_not_double_count_study_budgets_or_mix_tenants`, `test_restricted_admin_cannot_read_cost_or_worker_aggregates`; existing `test_operations_db.py` additionally verifies foreign tenant and role downgrade denial |
+| Provider accounting, D01/D05 | `test_successful_ai_with_unknown_charge_alerts_until_reconciliation`: real durable mock AI completion with absent usage, successful job plus retained unknown charge, exact reservation alert, manual reconciliation and cleared alert. Currency fixture separately proves no daily/study double count and no cross-currency addition |
+| D03/D07/D09 applicability | No new uniqueness, writer, concurrency protocol or schema. Existing job/AI migration, race and restore tests remain authoritative. Read-only summaries may span concurrent transitions; no atomic financial-decision contract is claimed. |
+
+Final focused operations/privacy/API run: **17 passed**. Offline image run over
+media, range, API and new health tests: **50 passed, 4 database cases deselected**.
+Full PostgreSQL/Valkey aggregate: **1,539 passed, 1 host FFmpeg skip, 5
+frontend/browser/load exclusions**. Explicit migration/schema checks: **3 passed**.
+The skipped media case passed in the image. Exact commands and boundaries are in
+[implementation status](IMPLEMENTATION_STATUS.md); focused counts overlap.
+
+Automatic transcription jobs, bounded chatbot connector, vendor OAuth/refresh/
+revocation/synchronization and their additional producer privacy/restore models
+remain **missing/blocked on provider choices**, not implemented-but-live-unvalidated.
+Existing SMTP, webhooks and chat completion adapters occupy that latter category.
+Production monitoring/backup/capacity, human/provider acceptance and frontend
+`media.review` rendering remain separately unaccepted. No frontend tests were run.
 
 ## P16–P19 additions
 

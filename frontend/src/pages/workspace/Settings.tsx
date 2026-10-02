@@ -72,27 +72,16 @@ export default function Settings() {
   const confirmReady = confirmText.trim() === initialWorkspace;
 
   return (
-    <WorkspaceShell
-      workspaceName={workspaceName}
-      displayName={displayName}
-      firstName={firstName}
-      role={role}
-      onSettings={() => goWithParams("/settings")}
-      onBilling={() => goWithParams("/workspace/billing")}
-      onCredits={() => goWithParams("/workspace/credits")}
-      onAccount={() => goWithParams("/account")}
-      onNotifications={() => goWithParams("/account/notifications")}
-      onRefer={() => goWithParams("/account/refer")}
-    >
+      <WorkspaceShell >
       <div className="stg-body">
-        <h1 className="stg-title">{text({ en: "Settings", fr: "Réglages" })}</h1>
-        <hr className="stg-rule" />
+      <h1 className="stg-title">{text({ en: "Settings", fr: "Réglages" })}</h1>
+      <hr className="stg-rule" />
 
-        <div className="stg-name-row">
-          <div className="stg-field">
-            <label className="stg-floating" htmlFor="workspace-name">
-              <span className="stg-floating__text">{text({ en: "Workspace name", fr: "Nom de l'espace" })}</span>
-              <input
+      <div className="stg-name-row">
+      <div className="stg-field">
+      <label className="stg-floating" htmlFor="workspace-name">
+      <span className="stg-floating__text">{text({ en: "Workspace name", fr: "Nom de l'espace" })}</span>
+      <input
                 id="workspace-name"
                 className="stg-input"
                 value={name}
@@ -103,12 +92,12 @@ export default function Settings() {
                 aria-invalid={error ? true : undefined}
                 aria-describedby={error ? "workspace-name-error" : "workspace-name-count"}
               />
-            </label>
+      </label>
             {error
               ? <p id="workspace-name-error" role="alert" className="stg-error">{error}</p>
               : <p id="workspace-name-count" className="stg-count">{name.length}/{MAX_NAME}</p>}
-          </div>
-          <button
+      </div>
+      <button
             type="button"
             className="stg-save"
             disabled={!canSave}
@@ -120,85 +109,85 @@ export default function Settings() {
               : savedTick
                 ? text({ en: "Saved", fr: "Enregistré" })
                 : text({ en: "Save", fr: "Enregistrer" })}
-          </button>
-        </div>
+      </button>
+      </div>
 
         {settingsError && <p role="alert" className="stg-error">{settingsError}</p>}
-        <h2 className="stg-section">{text({ en: "Workspace team members", fr: "Membres de l'espace" })}</h2>
+      <h2 className="stg-section">{text({ en: "Workspace team members", fr: "Membres de l'espace" })}</h2>
         {members.length > 0 ? (
-          <ul className="stg-members">
+      <ul className="stg-members">
             {members.map((member) => (
-              <li key={member.id} className="stg-members__row">
-                <span className="stg-members__role">{member.role} · {member.status}</span>
-              </li>
+      <li key={member.id} className="stg-members__row">
+      <span className="stg-members__role">{member.role} · {member.status}</span>
+      </li>
             ))}
-          </ul>
+      </ul>
         ) : null}
         {inviteOpen ? (
-          <form onSubmit={sendInvite} className="stg-invite">
-            <label htmlFor="invite-email" className="stg-floating__text">{text({ en: "Email to invite", fr: "E-mail à inviter" })}</label>
-            <input id="invite-email" type="email" value={inviteEmail} onChange={(event) => setInviteEmail(event.target.value)} className="stg-input" placeholder={text({ en: "name@company.com", fr: "nom@société.com" })} />
-            <button type="submit" className="stg-save">{text({ en: "Send invite", fr: "Envoyer" })}</button>
-          </form>
+      <form onSubmit={sendInvite} className="stg-invite">
+      <label htmlFor="invite-email" className="stg-floating__text">{text({ en: "Email to invite", fr: "E-mail à inviter" })}</label>
+      <input id="invite-email" type="email" value={inviteEmail} onChange={(event) => setInviteEmail(event.target.value)} className="stg-input" placeholder={text({ en: "name@company.com", fr: "nom@société.com" })} />
+      <button type="submit" className="stg-save">{text({ en: "Send invite", fr: "Envoyer" })}</button>
+      </form>
         ) : (
-          <button type="button" className="stg-pill" onClick={() => setInviteOpen(true)}>
+      <button type="button" className="stg-pill" onClick={() => setInviteOpen(true)}>
             {text({ en: "Invite a member", fr: "Inviter un membre" })}
-          </button>
+      </button>
         )}
         {audit.length > 0 ? (
-          <ul className="stg-audit">
+      <ul className="stg-audit">
             {audit.slice(0, 10).map((event) => (
-              <li key={event.id} className="stg-audit__row">{event.action} · {event.created_at}</li>
+      <li key={event.id} className="stg-audit__row">{event.action} · {event.created_at}</li>
             ))}
-          </ul>
+      </ul>
         ) : null}
-        <div className="stg-upgrade">
-          <p className="stg-upgrade__text">
+      <div className="stg-upgrade">
+      <p className="stg-upgrade__text">
             {text({ en: "Team plan lets you add members to this workspace.", fr: "Le plan Équipe permet d’ajouter des membres à cet espace." })}
-          </p>
-          <div className="stg-upgrade__actions">
-            <button type="button" className="stg-pill">
-              <Users className="stg-pill__icon" strokeWidth={1.8} aria-hidden="true" />
+      </p>
+      <div className="stg-upgrade__actions">
+      <button type="button" className="stg-pill">
+      <Users className="stg-pill__icon" strokeWidth={1.8} aria-hidden="true" />
               {text({ en: "Upgrade workspace", fr: "Améliorer l'espace" })}
-            </button>
-            <button type="button" className="stg-pill">
-              <Plus className="stg-pill__icon" strokeWidth={1.8} aria-hidden="true" />
+      </button>
+      <button type="button" className="stg-pill">
+      <Plus className="stg-pill__icon" strokeWidth={1.8} aria-hidden="true" />
               {text({ en: "Create new Team workspace", fr: "Créer un espace Équipe" })}
-            </button>
-          </div>
-        </div>
+      </button>
+      </div>
+      </div>
 
-        <h2 className="stg-section">{text({ en: "Delete workspace", fr: "Supprimer l'espace" })}</h2>
-        <p className="stg-delete-desc">
+      <h2 className="stg-section">{text({ en: "Delete workspace", fr: "Supprimer l'espace" })}</h2>
+      <p className="stg-delete-desc">
           {text({ en: "Deleting removes all tests and unused credits in this workspace.", fr: "La suppression retire tous les tests et crédits inutilisés de cet espace." })}
-          <strong className="stg-delete-warn">
+      <strong className="stg-delete-warn">
             {text({ en: "This action cannot be undone.", fr: "Cette action est définitive." })}
-          </strong>
-        </p>
-        <button type="button" className="stg-delete" onClick={() => { setConfirmText(""); setConfirmOpen(true); }}>
-          <Trash2 className="stg-delete__icon" strokeWidth={1.8} aria-hidden="true" />
+      </strong>
+      </p>
+      <button type="button" className="stg-delete" onClick={() => { setConfirmText(""); setConfirmOpen(true); }}>
+      <Trash2 className="stg-delete__icon" strokeWidth={1.8} aria-hidden="true" />
           {text({ en: "Delete workspace", fr: "Supprimer l'espace" })}
-        </button>
+      </button>
       </div>
 
       {confirmOpen && (
-        <div className="stg-modal" role="dialog" aria-modal="true" aria-labelledby="stg-delete-title">
-          <button type="button" className="stg-modal__scrim" aria-label={text({ en: "Close", fr: "Fermer" })} onClick={() => setConfirmOpen(false)} />
-          <div className="stg-modal__card">
-            <button type="button" className="stg-modal__close" aria-label={text({ en: "Close", fr: "Fermer" })} onClick={() => setConfirmOpen(false)}>
-              <X className="size-5" strokeWidth={1.6} />
-            </button>
-            <h2 id="stg-delete-title">{text({ en: "Delete this workspace?", fr: "Supprimer cet espace ?" })}</h2>
-            <p>
+      <div className="stg-modal" role="dialog" aria-modal="true" aria-labelledby="stg-delete-title">
+      <button type="button" className="stg-modal__scrim" aria-label={text({ en: "Close", fr: "Fermer" })} onClick={() => setConfirmOpen(false)} />
+      <div className="stg-modal__card">
+      <button type="button" className="stg-modal__close" aria-label={text({ en: "Close", fr: "Fermer" })} onClick={() => setConfirmOpen(false)}>
+      <X className="size-5" strokeWidth={1.6} />
+      </button>
+      <h2 id="stg-delete-title">{text({ en: "Delete this workspace?", fr: "Supprimer cet espace ?" })}</h2>
+      <p>
               {text({
                 en: `This removes all tests and unused credits in ${initialWorkspace}. You cannot undo this.`,
                 fr: `Cela retire tous les tests et crédits de ${initialWorkspace}. Action définitive.`,
               })}
-            </p>
-            <label className="stg-modal__label" htmlFor="stg-confirm-name">
+      </p>
+      <label className="stg-modal__label" htmlFor="stg-confirm-name">
               {text({ en: `Type ${initialWorkspace} to confirm`, fr: `Écrivez ${initialWorkspace} pour confirmer` })}
-            </label>
-            <input
+      </label>
+      <input
               id="stg-confirm-name"
               className="stg-modal__input"
               value={confirmText}
@@ -206,18 +195,18 @@ export default function Settings() {
               autoComplete="off"
               placeholder={initialWorkspace}
             />
-            <div className="stg-modal__actions">
-              <button type="button" className="stg-pill stg-pill--dark" autoFocus onClick={() => setConfirmOpen(false)}>
+      <div className="stg-modal__actions">
+      <button type="button" className="stg-pill stg-pill--dark" autoFocus onClick={() => setConfirmOpen(false)}>
                 {text({ en: "Keep workspace", fr: "Garder l'espace" })}
-              </button>
-              <button type="button" className="stg-delete" disabled={!confirmReady}>
-                <Trash2 className="stg-delete__icon" strokeWidth={1.8} aria-hidden="true" />
+      </button>
+      <button type="button" className="stg-delete" disabled={!confirmReady}>
+      <Trash2 className="stg-delete__icon" strokeWidth={1.8} aria-hidden="true" />
                 {text({ en: "Delete workspace", fr: "Supprimer l'espace" })}
-              </button>
-            </div>
-          </div>
-        </div>
+      </button>
+      </div>
+      </div>
+      </div>
       )}
-    </WorkspaceShell>
+      </WorkspaceShell>
   );
 }

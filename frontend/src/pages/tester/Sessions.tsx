@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuthLocale } from "@/components/auth/AuthLocale";
-import { BackToTesterHome, TesterShell } from "@/components/tester/TesterShell";
+import { TesterShell } from "@/components/tester/TesterShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { mockSessions } from "./testerMocks";
@@ -9,7 +9,6 @@ export default function TesterSessions() {
   const { text } = useAuthLocale(); const [items, setItems] = useState<S[]>(mockSessions as S[]); const [msg, setMsg] = useState<string|null>(null);
   const cancel = (id: string) => { setItems((c) => c.filter((x) => x.id !== id)); setMsg(text({ en: "Cancelled.", fr: "Annulé." })); };
   return (<TesterShell>
-    <BackToTesterHome />
     <h1 className="text-[28px] font-bold text-black">{text({ en: "My sessions.", fr: "Mes séances." })}</h1>
     <p className="mt-2 text-[16px] text-[#6d6d70]">{text({ en: "Newest first. Cancel anytime.", fr: "À venir d’abord. Annulez avant le début." })}</p>
     {msg && <p role="status" className="mt-4 rounded-lg bg-[#eef6ee] px-4 py-3 text-sm text-[#1d5c1d]">{msg}</p>}

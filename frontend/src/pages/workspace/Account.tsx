@@ -136,54 +136,43 @@ export default function Account() {
   };
 
   return (
-    <WorkspaceShell
-      workspaceName={workspaceName}
-      displayName={displayName}
-      firstName={firstName}
-      role={role}
-      onSettings={() => goWithParams("/settings")}
-      onBilling={() => goWithParams("/workspace/billing")}
-      onCredits={() => goWithParams("/workspace/credits")}
-      onAccount={() => goWithParams("/account")}
-      onNotifications={() => goWithParams("/account/notifications")}
-      onRefer={() => goWithParams("/account/refer")}
-    >
+      <WorkspaceShell >
       <div className="acc-body">
-        <h1 className="acc-title">{text({ en: "Account", fr: "Compte" })}</h1>
-        <hr className="acc-rule" />
+      <h1 className="acc-title">{text({ en: "Account", fr: "Compte" })}</h1>
+      <hr className="acc-rule" />
 
-        <section aria-labelledby="account-details-heading">
-          <h2 id="account-details-heading" className="acc-section">
+      <section aria-labelledby="account-details-heading">
+      <h2 id="account-details-heading" className="acc-section">
             {text({ en: "Personal details", fr: "Coordonnées personnelles" })}
-          </h2>
-          <div className="acc-grid">
-            <label className="acc-field">
-              <span className="acc-field__label">{text({ en: "First name", fr: "Prénom" })}</span>
-              <input
+      </h2>
+      <div className="acc-grid">
+      <label className="acc-field">
+      <span className="acc-field__label">{text({ en: "First name", fr: "Prénom" })}</span>
+      <input
                 className="acc-input"
                 value={form.firstName}
                 autoComplete="given-name"
                 onChange={(event) => update("firstName", event.target.value)}
               />
-            </label>
-            <label className="acc-field">
-              <span className="acc-field__label">{text({ en: "Last name", fr: "Nom" })}</span>
-              <input
+      </label>
+      <label className="acc-field">
+      <span className="acc-field__label">{text({ en: "Last name", fr: "Nom" })}</span>
+      <input
                 className="acc-input"
                 value={form.lastName}
                 autoComplete="family-name"
                 onChange={(event) => update("lastName", event.target.value)}
               />
-            </label>
+      </label>
 
-            <label className="acc-field">
-              <span className="acc-field__label">{text({ en: "Phone number", fr: "Numéro de téléphone" })}</span>
-              <span className="acc-phone-prefix" aria-hidden="true">
-                <span>🇹🇳</span>
-                <span>+216</span>
-                <ChevronDown className="acc-phone-prefix__chevron" />
-              </span>
-              <input
+      <label className="acc-field">
+      <span className="acc-field__label">{text({ en: "Phone number", fr: "Numéro de téléphone" })}</span>
+      <span className="acc-phone-prefix" aria-hidden="true">
+      <span>🇹🇳</span>
+      <span>+216</span>
+      <ChevronDown className="acc-phone-prefix__chevron" />
+      </span>
+      <input
                 className="acc-input acc-input--phone"
                 value={form.phone}
                 type="tel"
@@ -191,15 +180,15 @@ export default function Account() {
                 autoComplete="tel-national"
                 onChange={(event) => update("phone", event.target.value)}
               />
-            </label>
-            <label className="acc-field">
-              <span className="acc-field__label">{text({ en: "WhatsApp number", fr: "Numéro WhatsApp" })}</span>
-              <span className="acc-phone-prefix" aria-hidden="true">
-                <span>🇹🇳</span>
-                <span>+216</span>
-                <ChevronDown className="acc-phone-prefix__chevron" />
-              </span>
-              <input
+      </label>
+      <label className="acc-field">
+      <span className="acc-field__label">{text({ en: "WhatsApp number", fr: "Numéro WhatsApp" })}</span>
+      <span className="acc-phone-prefix" aria-hidden="true">
+      <span>🇹🇳</span>
+      <span>+216</span>
+      <ChevronDown className="acc-phone-prefix__chevron" />
+      </span>
+      <input
                 className="acc-input acc-input--phone"
                 value={form.whatsappNumber}
                 type="tel"
@@ -207,177 +196,177 @@ export default function Account() {
                 autoComplete="tel-national"
                 onChange={(event) => update("whatsappNumber", event.target.value)}
               />
-            </label>
+      </label>
 
-            <label className="acc-check">
-              <input
+      <label className="acc-check">
+      <input
                 type="checkbox"
                 checked={form.useWhatsapp}
                 onChange={(event) => update("useWhatsapp", event.target.checked)}
               />
-              <span className={form.useWhatsapp ? "acc-check__box acc-check__box--on" : "acc-check__box acc-check__box--off"} aria-hidden="true">
-                <Check className="acc-icon" strokeWidth={3} />
-              </span>
+      <span className={form.useWhatsapp ? "acc-check__box acc-check__box--on" : "acc-check__box acc-check__box--off"} aria-hidden="true">
+      <Check className="acc-icon" strokeWidth={3} />
+      </span>
               {text({ en: "I use WhatsApp on this number", fr: "J’utilise WhatsApp sur ce numéro" })}
-            </label>
-            <span aria-hidden="true" />
+      </label>
+      <span aria-hidden="true" />
 
-            <label className="acc-field">
-              <span className="acc-field__label">{text({ en: "Email address", fr: "Adresse e-mail" })}</span>
-              <span className="acc-input-wrap">
-                <input className="acc-input" value={email} disabled aria-label={text({ en: "Email address", fr: "Adresse e-mail" })} />
-                <span className="acc-lock" aria-hidden="true">
-                  <Lock className="acc-lock__icon" />
-                </span>
-              </span>
-            </label>
-            <button type="button" className="acc-change">
+      <label className="acc-field">
+      <span className="acc-field__label">{text({ en: "Email address", fr: "Adresse e-mail" })}</span>
+      <span className="acc-input-wrap">
+      <input className="acc-input" value={email} disabled aria-label={text({ en: "Email address", fr: "Adresse e-mail" })} />
+      <span className="acc-lock" aria-hidden="true">
+      <Lock className="acc-lock__icon" />
+      </span>
+      </span>
+      </label>
+      <button type="button" className="acc-change">
               {text({ en: "Change email", fr: "Modifier l’e-mail" })}
-            </button>
+      </button>
 
-            <label className="acc-field">
-              <span className="acc-field__label">{text({ en: "Company", fr: "Société" })}</span>
-              <input
+      <label className="acc-field">
+      <span className="acc-field__label">{text({ en: "Company", fr: "Société" })}</span>
+      <input
                 className="acc-input"
                 value={form.company}
                 autoComplete="organization"
                 onChange={(event) => update("company", event.target.value)}
               />
-            </label>
-            <label className="acc-field">
-              <span className="acc-field__label">{text({ en: "Job role", fr: "Poste" })}</span>
-              <span className="acc-input-wrap">
-                <input
+      </label>
+      <label className="acc-field">
+      <span className="acc-field__label">{text({ en: "Job role", fr: "Poste" })}</span>
+      <span className="acc-input-wrap">
+      <input
                   className="acc-input"
                   value={form.jobRole}
                   autoComplete="organization-title"
                   onChange={(event) => update("jobRole", event.target.value)}
                 />
                 {form.jobRole && (
-                  <button
+      <button
                     type="button"
                     className="acc-icon-button"
                     aria-label={text({ en: "Clear job role", fr: "Effacer le poste" })}
                     onClick={() => update("jobRole", "")}
                   >
-                    <X className="acc-icon" />
-                  </button>
+      <X className="acc-icon" />
+      </button>
                 )}
-              </span>
-            </label>
+      </span>
+      </label>
 
-            <label className="acc-field">
-              <span className="acc-field__label">{text({ en: "Research & design team size", fr: "Taille de l’équipe recherche et design" })}</span>
-              <span className="acc-input-wrap">
-                <input
+      <label className="acc-field">
+      <span className="acc-field__label">{text({ en: "Research & design team size", fr: "Taille de l’équipe recherche et design" })}</span>
+      <span className="acc-input-wrap">
+      <input
                   className="acc-input"
                   value={form.teamSize}
                   autoComplete="off"
                   onChange={(event) => update("teamSize", event.target.value)}
                 />
                 {form.teamSize && (
-                  <button
+      <button
                     type="button"
                     className="acc-icon-button"
                     aria-label={text({ en: "Clear team size", fr: "Effacer la taille de l’équipe" })}
                     onClick={() => update("teamSize", "")}
                   >
-                    <X className="acc-icon" />
-                  </button>
+      <X className="acc-icon" />
+      </button>
                 )}
-              </span>
-            </label>
-          </div>
-          <button type="button" className="acc-save" disabled={!canSave} aria-busy={saving} onClick={handleSave}>
+      </span>
+      </label>
+      </div>
+      <button type="button" className="acc-save" disabled={!canSave} aria-busy={saving} onClick={handleSave}>
             {saving
               ? text({ en: "Saving…", fr: "Enregistrement…" })
               : savedTick
                 ? text({ en: "Saved", fr: "Enregistré" })
                 : text({ en: "Save updates", fr: "Enregistrer" })}
-          </button>
-        </section>
+      </button>
+      </section>
 
-        <section aria-labelledby="account-workspaces-heading" className="acc-workspaces">
-          <h2 id="account-workspaces-heading" className="acc-section">
+      <section aria-labelledby="account-workspaces-heading" className="acc-workspaces">
+      <h2 id="account-workspaces-heading" className="acc-section">
             {text({ en: "Workspaces", fr: "Espaces" })}
-          </h2>
-          <div className="acc-table-head" role="row">
-            <span role="columnheader">{text({ en: "Workspaces", fr: "Espaces" })}</span>
-            <span role="columnheader">{text({ en: "Role", fr: "Rôle" })}</span>
-            <span role="columnheader">{text({ en: "Member since", fr: "Membre depuis" })}</span>
-            <span />
-          </div>
-          <div className="acc-table-row" role="row">
-            <div className="acc-workspace" role="rowheader">
-              <span className="acc-workspace__avatar">
-                <span className="acc-workspace__status" aria-hidden="true" />
-                <User className="acc-icon" aria-hidden="true" />
-              </span>
-              <span>
-                <p className="acc-workspace__name">{workspaceName}</p>
-                <p className="acc-workspace__type">{text({ en: "Individual workspace", fr: "Espace individuel" })}</p>
-              </span>
-            </div>
-            <p className="acc-table-value" role="cell">{text({ en: "Admin", fr: "Admin" })}</p>
-            <p className="acc-table-value" role="cell">25-09-2026</p>
-            <button
+      </h2>
+      <div className="acc-table-head" role="row">
+      <span role="columnheader">{text({ en: "Workspaces", fr: "Espaces" })}</span>
+      <span role="columnheader">{text({ en: "Role", fr: "Rôle" })}</span>
+      <span role="columnheader">{text({ en: "Member since", fr: "Membre depuis" })}</span>
+      <span />
+      </div>
+      <div className="acc-table-row" role="row">
+      <div className="acc-workspace" role="rowheader">
+      <span className="acc-workspace__avatar">
+      <span className="acc-workspace__status" aria-hidden="true" />
+      <User className="acc-icon" aria-hidden="true" />
+      </span>
+      <span>
+      <p className="acc-workspace__name">{workspaceName}</p>
+      <p className="acc-workspace__type">{text({ en: "Individual workspace", fr: "Espace individuel" })}</p>
+      </span>
+      </div>
+      <p className="acc-table-value" role="cell">{text({ en: "Admin", fr: "Admin" })}</p>
+      <p className="acc-table-value" role="cell">25-09-2026</p>
+      <button
               type="button"
               className="acc-icon-button acc-row-menu"
               aria-label={text({ en: "Workspace options", fr: "Options de l’espace" })}
             >
-              <MoreVertical className="acc-icon" />
-            </button>
-          </div>
-        </section>
+      <MoreVertical className="acc-icon" />
+      </button>
+      </div>
+      </section>
 
-        <section aria-labelledby="account-password-heading" className="acc-password">
-          <h2 id="account-password-heading" className="acc-section">
+      <section aria-labelledby="account-password-heading" className="acc-password">
+      <h2 id="account-password-heading" className="acc-section">
             {text({ en: "Change password", fr: "Modifier le mot de passe" })}
-          </h2>
-          <button type="button" className="acc-password__button" onClick={() => setPasswordOpen(true)}>
-            <Lock className="acc-icon" aria-hidden="true" />
+      </h2>
+      <button type="button" className="acc-password__button" onClick={() => setPasswordOpen(true)}>
+      <Lock className="acc-icon" aria-hidden="true" />
             {text({ en: "Change password", fr: "Modifier le mot de passe" })}
-          </button>
-        </section>
+      </button>
+      </section>
 
         {sessions.length > 0 && (
-          <section aria-labelledby="account-sessions-heading" className="acc-password">
-            <h2 id="account-sessions-heading" className="acc-section">
+      <section aria-labelledby="account-sessions-heading" className="acc-password">
+      <h2 id="account-sessions-heading" className="acc-section">
               {text({ en: "Signed-in devices", fr: "Appareils connectés" })}
-            </h2>
+      </h2>
             {accountError && <p role="alert" className="acc-delete__copy">{accountError}</p>}
-            <ul className="acc-sessions">
+      <ul className="acc-sessions">
               {sessions.map((session) => (
-                <li key={session.id} className="acc-sessions__row">
-                  <span className="acc-table-value">{text({ en: "Session", fr: "Session" })} · {session.expires_at}</span>
-                  <button type="button" className="acc-change" onClick={() => revokeSession(session.id)}>
+      <li key={session.id} className="acc-sessions__row">
+      <span className="acc-table-value">{text({ en: "Session", fr: "Session" })} · {session.expires_at}</span>
+      <button type="button" className="acc-change" onClick={() => revokeSession(session.id)}>
                     {text({ en: "Revoke", fr: "Révoquer" })}
-                  </button>
-                </li>
+      </button>
+      </li>
               ))}
-            </ul>
-          </section>
+      </ul>
+      </section>
         )}
 
-        <section aria-labelledby="account-delete-heading" className="acc-delete">
-          <h2 id="account-delete-heading" className="acc-section">
+      <section aria-labelledby="account-delete-heading" className="acc-delete">
+      <h2 id="account-delete-heading" className="acc-section">
             {text({ en: "Delete account", fr: "Supprimer le compte" })}
-          </h2>
-          <p className="acc-delete__copy">
+      </h2>
+      <p className="acc-delete__copy">
             {text({
               en: "Deleting removes your tests and unused credits.",
               fr: "La suppression retire vos tests et crédits inutilisés.",
             })}{" "}
-            <strong>
+      <strong>
               {text({ en: "You cannot undo this.", fr: "Action définitive." })}
-            </strong>
-          </p>
-          <button type="button" className="acc-delete__button">
+      </strong>
+      </p>
+      <button type="button" className="acc-delete__button">
             {text({ en: "Delete account", fr: "Supprimer le compte" })}
-          </button>
-        </section>
+      </button>
+      </section>
       {passwordOpen && (
-        <div
+      <div
           className="acc-modal"
           role="dialog"
           aria-modal="true"
@@ -386,15 +375,15 @@ export default function Account() {
             if (event.target === event.currentTarget) closePassword();
           }}
         >
-          <div className="acc-modal__card">
-            <div className="acc-modal__head">
-              <h2 className="acc-modal__title">{text({ en: "Change password", fr: "Modifier le mot de passe" })}</h2>
-              <button type="button" className="acc-modal__close" aria-label={text({ en: "Close", fr: "Fermer" })} onClick={closePassword}>
-                <X className="acc-icon" aria-hidden="true" />
-              </button>
-            </div>
-            <label className="acc-modal__field">
-              <input
+      <div className="acc-modal__card">
+      <div className="acc-modal__head">
+      <h2 className="acc-modal__title">{text({ en: "Change password", fr: "Modifier le mot de passe" })}</h2>
+      <button type="button" className="acc-modal__close" aria-label={text({ en: "Close", fr: "Fermer" })} onClick={closePassword}>
+      <X className="acc-icon" aria-hidden="true" />
+      </button>
+      </div>
+      <label className="acc-modal__field">
+      <input
                 type={showCurrent ? "text" : "password"}
                 className="acc-modal__input"
                 placeholder={text({ en: "Current password", fr: "Mot de passe actuel" })}
@@ -402,7 +391,7 @@ export default function Account() {
                 value={currentPassword}
                 onChange={(event) => setCurrentPassword(event.target.value)}
               />
-              <button
+      <button
                 type="button"
                 className="acc-modal__eye"
                 aria-label={showCurrent ? text({ en: "Hide password", fr: "Masquer le mot de passe" }) : text({ en: "Show password", fr: "Afficher le mot de passe" })}
@@ -410,10 +399,10 @@ export default function Account() {
                 onClick={() => setShowCurrent((value) => !value)}
               >
                 {showCurrent ? <EyeOff className="acc-icon" aria-hidden="true" /> : <Eye className="acc-icon" aria-hidden="true" />}
-              </button>
-            </label>
-            <label className="acc-modal__field">
-              <input
+      </button>
+      </label>
+      <label className="acc-modal__field">
+      <input
                 type={showNew ? "text" : "password"}
                 className="acc-modal__input"
                 placeholder={text({ en: "New password", fr: "Nouveau mot de passe" })}
@@ -421,7 +410,7 @@ export default function Account() {
                 value={newPassword}
                 onChange={(event) => setNewPassword(event.target.value)}
               />
-              <button
+      <button
                 type="button"
                 className="acc-modal__eye"
                 aria-label={showNew ? text({ en: "Hide password", fr: "Masquer le mot de passe" }) : text({ en: "Show password", fr: "Afficher le mot de passe" })}
@@ -429,10 +418,10 @@ export default function Account() {
                 onClick={() => setShowNew((value) => !value)}
               >
                 {showNew ? <EyeOff className="acc-icon" aria-hidden="true" /> : <Eye className="acc-icon" aria-hidden="true" />}
-              </button>
-            </label>
-            <label className="acc-modal__field">
-              <input
+      </button>
+      </label>
+      <label className="acc-modal__field">
+      <input
                 type={showConfirm ? "text" : "password"}
                 className="acc-modal__input"
                 placeholder={text({ en: "Confirm password", fr: "Confirmer le mot de passe" })}
@@ -440,7 +429,7 @@ export default function Account() {
                 value={confirmPassword}
                 onChange={(event) => setConfirmPassword(event.target.value)}
               />
-              <button
+      <button
                 type="button"
                 className="acc-modal__eye"
                 aria-label={showConfirm ? text({ en: "Hide password", fr: "Masquer le mot de passe" }) : text({ en: "Show password", fr: "Afficher le mot de passe" })}
@@ -448,18 +437,18 @@ export default function Account() {
                 onClick={() => setShowConfirm((value) => !value)}
               >
                 {showConfirm ? <EyeOff className="acc-icon" aria-hidden="true" /> : <Eye className="acc-icon" aria-hidden="true" />}
-              </button>
-            </label>
+      </button>
+      </label>
             {accountError && <p role="alert" className="acc-delete__copy">{accountError}</p>}
-            <button type="button" className="acc-modal__submit" disabled={!canChangePassword} onClick={handleChangePassword}>
+      <button type="button" className="acc-modal__submit" disabled={!canChangePassword} onClick={handleChangePassword}>
               {changing
                 ? text({ en: "Saving…", fr: "Enregistrement…" })
                 : text({ en: "Change password", fr: "Modifier le mot de passe" })}
-            </button>
-          </div>
-        </div>
+      </button>
+      </div>
+      </div>
       )}
       </div>
-    </WorkspaceShell>
+      </WorkspaceShell>
   );
 }

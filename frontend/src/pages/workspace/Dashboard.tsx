@@ -8,6 +8,7 @@ import { PrototypeArt, CardSortingArt, PreferenceArt, TreeTestArt, SurveyArt, Su
 import "@/components/workspace/WelcomeDialog.css";
 import { WorkspaceShell, useWorkspaceNav } from "@/components/workspace/WorkspaceShell";
 import { TestSettingsDialog } from "@/components/workspace/TestSettingsDialog";
+import { routes, withQuery } from "@/lib/routes";
 
 const testTypes = [
   { key: "prototype", method: "prototype.task", Art: PrototypeArt, title: { en: "Prototype", fr: "Prototype" }, body: { en: "People try your design.", fr: "Les gens essaient votre design et racontent." } },
@@ -29,7 +30,7 @@ const testTypes = [
 
 export default function Dashboard() {
   const { text } = useAuthLocale();
-  const { navigate, role, welcome, firstName, displayName, workspaceName, goWithParams } = useWorkspaceNav();
+  const { navigate, role, welcome, workspaceName, goWithParams } = useWorkspaceNav();
   const { workspaceId } = useWorkspace();
   const [overview, setOverview] = useState<{ live: number; draft: number; replies: number; toCheck: number } | null>(null);
   const [overviewState, setOverviewState] = useState<"idle" | "loading" | "error">("idle");
@@ -42,71 +43,60 @@ export default function Dashboard() {
       .then((result) => { setOverview(result); setOverviewState("idle"); })
       .catch(() => setOverviewState("error"));
   }, [workspaceId]);
-  const dismissWelcome = () => navigate(`/dashboard?role=${role}`, { replace: true });
+  const dismissWelcome = () => navigate(withQuery(routes.dashboard, { role }), { replace: true });
   return (
-    <WorkspaceShell
-      workspaceName={workspaceName}
-      displayName={displayName}
-      firstName={firstName}
-      role={role}
-      onSettings={() => goWithParams("/settings")}
-      onBilling={() => goWithParams("/workspace/billing")}
-      onCredits={() => goWithParams("/workspace/credits")}
-      onAccount={() => goWithParams("/account")}
-      onNotifications={() => goWithParams("/account/notifications")}
-      onRefer={() => goWithParams("/account/refer")}
-    >
+      <WorkspaceShell >
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <p className="text-[13px] font-medium uppercase tracking-[0.08em] text-[#6d6d70]">{text({ en: "Your work", fr: "Votre travail" })}</p>
-          <h1 className="mt-1 text-[30px] font-bold tracking-[-0.02em] text-black">{text({ en: "Home", fr: "Accueil" })}</h1>
-        </div>
-        <div className="flex flex-wrap gap-3">
-          <button type="button" onClick={() => document.getElementById("choose-test")?.scrollIntoView({ behavior: "smooth" })} className="inline-flex min-h-[46px] items-center gap-2 rounded-full bg-[#18181b] px-6 text-[15px] font-medium text-white hover:bg-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0a84ff] focus-visible:ring-offset-2"><Folder className="size-[18px]" strokeWidth={1.6} aria-hidden="true" />{text({ en: "New study", fr: "Nouvelle étude" })}</button>
-          <button type="button" onClick={() => goWithParams("/recruit")} className="inline-flex min-h-[46px] items-center gap-2 rounded-full border border-[#18181b] px-6 text-[15px] font-medium text-black hover:bg-[#f7f8fa] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0a84ff] focus-visible:ring-offset-2"><UserRoundPlus className="size-[18px]" strokeWidth={1.6} aria-hidden="true" />{text({ en: "Find people", fr: "Trouver des gens" })}</button>
-          <button type="button" onClick={() => goWithParams("/analytics")} className="inline-flex min-h-[46px] items-center gap-2 rounded-full bg-[#1d4ed8] px-6 text-[15px] font-medium text-white hover:bg-[#1e40af] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0a84ff] focus-visible:ring-offset-2"><BarChart3 className="size-[18px]" strokeWidth={1.6} aria-hidden="true" />{text({ en: "Analytics", fr: "Stats" })}</button>
-          <button type="button" onClick={() => goWithParams("/history")} className="inline-flex min-h-[46px] items-center gap-2 rounded-full border border-[#18181b] px-6 text-[15px] font-medium text-black hover:bg-[#f7f8fa] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0a84ff] focus-visible:ring-offset-2"><HistoryIcon className="size-[18px]" strokeWidth={1.6} aria-hidden="true" />{text({ en: "History", fr: "Historique" })}</button>
-        </div>
+      <div>
+      <p className="text-[13px] font-medium uppercase tracking-[0.08em] text-[#6d6d70]">{text({ en: "Your work", fr: "Votre travail" })}</p>
+      <h1 className="mt-1 text-[30px] font-bold tracking-[-0.02em] text-black">{text({ en: "Home", fr: "Accueil" })}</h1>
+      </div>
+      <div className="flex flex-wrap gap-3">
+      <button type="button" onClick={() => document.getElementById("choose-test")?.scrollIntoView({ behavior: "smooth" })} className="inline-flex min-h-[46px] items-center gap-2 rounded-full bg-[#18181b] px-6 text-[15px] font-medium text-white hover:bg-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0a84ff] focus-visible:ring-offset-2"><Folder className="size-[18px]" strokeWidth={1.6} aria-hidden="true" />{text({ en: "New study", fr: "Nouvelle étude" })}</button>
+      <button type="button" onClick={() => goWithParams(routes.recruit)} className="inline-flex min-h-[46px] items-center gap-2 rounded-full border border-[#18181b] px-6 text-[15px] font-medium text-black hover:bg-[#f7f8fa] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0a84ff] focus-visible:ring-offset-2"><UserRoundPlus className="size-[18px]" strokeWidth={1.6} aria-hidden="true" />{text({ en: "Find people", fr: "Trouver des gens" })}</button>
+      <button type="button" onClick={() => goWithParams(routes.analytics)} className="inline-flex min-h-[46px] items-center gap-2 rounded-full bg-[#1d4ed8] px-6 text-[15px] font-medium text-white hover:bg-[#1e40af] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0a84ff] focus-visible:ring-offset-2"><BarChart3 className="size-[18px]" strokeWidth={1.6} aria-hidden="true" />{text({ en: "Analytics", fr: "Stats" })}</button>
+      <button type="button" onClick={() => goWithParams(routes.history)} className="inline-flex min-h-[46px] items-center gap-2 rounded-full border border-[#18181b] px-6 text-[15px] font-medium text-black hover:bg-[#f7f8fa] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0a84ff] focus-visible:ring-offset-2"><HistoryIcon className="size-[18px]" strokeWidth={1.6} aria-hidden="true" />{text({ en: "History", fr: "Historique" })}</button>
+      </div>
       </div>
 
       <button
         type="button"
-        onClick={() => goWithParams("/analytics")}
+        onClick={() => goWithParams(routes.analytics)}
         className="mt-6 flex w-full flex-wrap items-center gap-4 rounded-[22px] p-6 text-left text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0a84ff] focus-visible:ring-offset-2"
         style={{ background: "linear-gradient(120deg,#0b1e4b,#1d4ed8 60%,#0ea5e9)" }}
       >
-        <span className="grid size-12 shrink-0 place-items-center rounded-full bg-white/15"><BarChart3 className="size-6" strokeWidth={1.6} aria-hidden="true" /></span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-[20px] font-bold tracking-tight">{text({ en: "Results at a glance", fr: "Vos résultats en bref" })}</span>
-          <span className="mt-1 block text-[14px] text-white/85">{
+      <span className="grid size-12 shrink-0 place-items-center rounded-full bg-white/15"><BarChart3 className="size-6" strokeWidth={1.6} aria-hidden="true" /></span>
+      <span className="min-w-0 flex-1">
+      <span className="block text-[20px] font-bold tracking-tight">{text({ en: "Results at a glance", fr: "Vos résultats en bref" })}</span>
+      <span className="mt-1 block text-[14px] text-white/85">{
             overview
               ? `${overview.replies} ${text({ en: "replies", fr: "réponses" })} · ${overview.toCheck} ${text({ en: "to review", fr: "à vérifier" })}. ${text({ en: "See details.", fr: "Voir les détails." })}`
               : overviewState === "loading"
                 ? text({ en: "Loading your results…", fr: "Chargement de vos résultats…" })
                 : text({ en: "424 replies · 3 to review. See charts and details.", fr: "424 réponses · 3 à vérifier. Voir les détails." })
           }</span>
-        </span>
-        <span className="inline-flex min-h-[46px] items-center gap-2 rounded-full bg-white px-6 text-[15px] font-semibold text-black">
+      </span>
+      <span className="inline-flex min-h-[46px] items-center gap-2 rounded-full bg-white px-6 text-[15px] font-semibold text-black">
           {text({ en: "Open analytics", fr: "Voir les stats" })}<ArrowRight className="size-[18px]" strokeWidth={1.8} aria-hidden="true" />
-        </span>
+      </span>
       </button>
 
       <h2 id="choose-test" className="mt-12 scroll-mt-6 text-[28px] font-bold tracking-[-0.02em] text-black">{text({ en: "Choose a test", fr: "Choisir un test" })}</h2>
       <p className="mt-3 max-w-[72ch] text-[16px] leading-relaxed text-[#6d6d70]">{text({ en: "Pick a template to start. We check consent and images before you share.", fr: "Choisissez un modèle. On vérifie tout avant de partager." })}</p>
       <div className="mt-8 grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
         {testTypes.map((test) => (
-          <button key={test.key} type="button" onClick={() => test.method === "recruit" ? goWithParams("/recruit") : setSelectedTest(test)} aria-label={text(test.title)} className="group rounded-[14px] border border-[#e4e4e7] bg-[#fafafa] p-4 text-left transition-shadow hover:shadow-[0_18px_45px_-28px_rgba(24,24,27,0.45)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0a84ff]">
-            <span className="block overflow-hidden rounded-[10px] border border-[#e9e9ec] bg-white"><span className="block aspect-[16/10] w-full p-3"><test.Art /></span></span>
-            <span className="mt-5 flex items-baseline justify-between gap-3 px-1">
-              <span className="flex items-center gap-1.5 text-[19px] font-bold text-black">{text(test.title)}{"star" in test && test.star && <Sparkles className="size-4 text-[#1d4ed8]" aria-hidden="true" />}</span>
-              <span className="text-[12px] font-medium uppercase tracking-wide text-[#6d6d70]">{test.method === "five_second" ? "5 second test" : "Easy start"}</span>
-            </span>
-            <span className="mt-2 block px-1 pb-1 text-[14.5px] leading-[1.6] text-[#6d6d70]">{text(test.body)}</span>
-          </button>
+      <button key={test.key} type="button" onClick={() => test.method === "recruit" ? goWithParams(routes.recruit) : setSelectedTest(test)} aria-label={text(test.title)} className="group rounded-[14px] border border-[#e4e4e7] bg-[#fafafa] p-4 text-left transition-shadow hover:shadow-[0_18px_45px_-28px_rgba(24,24,27,0.45)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0a84ff]">
+      <span className="block overflow-hidden rounded-[10px] border border-[#e9e9ec] bg-white"><span className="block aspect-[16/10] w-full p-3"><test.Art /></span></span>
+      <span className="mt-5 flex items-baseline justify-between gap-3 px-1">
+      <span className="flex items-center gap-1.5 text-[19px] font-bold text-black">{text(test.title)}{"star" in test && test.star && <Sparkles className="size-4 text-[#1d4ed8]" aria-hidden="true" />}</span>
+      <span className="text-[12px] font-medium uppercase tracking-wide text-[#6d6d70]">{test.method === "five_second" ? "5 second test" : "Easy start"}</span>
+      </span>
+      <span className="mt-2 block px-1 pb-1 text-[14.5px] leading-[1.6] text-[#6d6d70]">{text(test.body)}</span>
+      </button>
         ))}
       </div>
       {welcome && <WelcomeDialog open workspaceName={workspaceName} onGoToDashboard={dismissWelcome} />}
-      <TestSettingsDialog open={selectedTest !== null} test={selectedTest} onClose={() => setSelectedTest(null)} onCreate={({ name, language, project, device, custom }) => { const method = selectedTest?.method ?? "survey.single"; setSelectedTest(null); goWithParams(`/studies/create?method=${method}&name=${encodeURIComponent(name)}&lang=${language}&project=${encodeURIComponent(project)}&device=${device}&custom=${encodeURIComponent(JSON.stringify(custom))}`); }} />
-    </WorkspaceShell>
+      <TestSettingsDialog open={selectedTest !== null} test={selectedTest} onClose={() => setSelectedTest(null)} onCreate={({ name, language, project, device, custom }) => { const method = selectedTest?.method ?? "survey.single"; setSelectedTest(null); goWithParams(withQuery(routes.newStudy, { method, name, lang: language, project, device, custom: JSON.stringify(custom) })); }} />
+      </WorkspaceShell>
   );
 }

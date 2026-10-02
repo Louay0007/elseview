@@ -354,7 +354,7 @@ export function MediaBuilder({ text, custom, onPatch }: BuilderProps) {
           </div>
         ) : (
           <label htmlFor="md-file" className={`flex min-h-[120px] flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[#d9d9df] bg-[#f7f9fc] px-4 text-center transition ${mediaKind ? "cursor-pointer hover:border-[#1d4ed8]" : "cursor-not-allowed opacity-50"}`}>
-            {isAudio || mediaKind === "audio"
+            {mediaKind === "audio"
               ? <FileAudio className="size-6 text-[#1d4ed8]" aria-hidden="true" />
               : <FileVideo className="size-6 text-[#1d4ed8]" aria-hidden="true" />}
             <span className="text-[13.5px] font-semibold text-[#0b1e4b]">{text({ en: "Drop your file here or click to browse", fr: "Déposez votre fichier ou cliquez pour parcourir" })}</span>

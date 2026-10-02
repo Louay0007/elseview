@@ -2,6 +2,249 @@
 
 **Brand:** Elseview — See what you’re missing.
 
+<a id="latest-backend-only-verification--september-24-2026"></a>
+
+## Latest selected-provider backend increment — September 24, 2026
+
+**Provider-selection blocker resolved by the user's delegation.** Code head advances
+from the verified `038_interview_drafts` to **`039_connected_workflows`**. No existing
+operator database was migrated or reset. Existing backend edits and the replacement
+frontend were preserved. Earlier checkpoints below are historical, not current gaps.
+
+### Implemented locally; live adapters are not live-validated
+
+| Area | Implemented scope and limits |
+|---|---|
+| Transcription | OpenAI `whisper-1`; separately scoped transcription consent plus recording consent; assisted-study eligibility; validated WAV only; up to six five-minute/24 MB chunks; durable per-chunk jobs; pinned USD rate and reservation; source checksum/language/timestamps/machine provenance; immutable transcript attachment; cancellation, pre-send retry, ambiguous-send quarantine and reconciliation. No diarization or human correction editor is claimed. |
+| Fictional sandbox | Pinned `gpt-4.1-mini-2025-04-14`; three immutable fictional turns, no participant source or arbitrary prompt/URL/tool; bounded input/output/cost and durable per-turn jobs. This is a selected fixed sandbox, not arbitrary customer-bot connectivity. |
+| Design/calendar/project | Figma depth-1 file snapshots; Google primary-calendar one-way booking reconciliation with stable IDs, ownership markers, ETags and no invitations; Linear approved-report-reference tasks, stable issue IDs and lookup-before-create. Explicit recovery of uncertain zero-cost operations and owned-remote-artifact deletion are implemented. |
+| OAuth | Exact registered callbacks, hashed one-use state, HttpOnly cookie/login-family binding, S256 challenge/verifier, separately encrypted credentials, explicit refresh, 90-day grant lifetime, rotation uncertainty and revocation. Google/Linear remote revoke exists. Figma disconnect is local plus explicitly pending manual provider revocation; no unsupported revoke API is invented. |
+| Privacy | Three physical tables plus existing budget/job/event infrastructure; content erasure, hold-safe offline retention, seven-day default expiry, post-hold sweeps, source/subject/study/consent hooks, remote cleanup records, replay events and restore-time credential removal/uncertain reservation quarantine. Raw command keys are hashed. Capability secrets are revoked even under holds; minimal opaque cleanup/financial identifiers remain. |
+| Reliability/monitoring | Existing single-flight runner executes bounded connected steps. Workspace dispatch protection ends at request-body completion, not response completion; every follow-up HTTP request rechecks authority. Late responses cannot survive cancellation/epoch changes. Operations summaries expose connected/connection states, uncertain costs and pending remote actions without credentials/content. |
+
+`CONNECTED_MODE=disabled` remains the default; live mode additionally requires the
+explicit approval/privacy record, production/HTTPS/worker settings, suitable lease
+bounds, a separate encryption key and configured provider credentials. **No live
+calls, actual messages, charges, deployment or provider activation occurred.**
+Defaults are local content retention 7 days (maximum 30), USD 5/day workspace budget,
+100 non-cleanup runs/day, a 30-second remote deadline (maximum 120) and 5/20-second
+connect/write bounds. Financial costs are local pinned-rate accounting, not invoices.
+
+### Verification evidence
+
+- Initial adapter/core/protocol/migration checks: **52 passed**, 4.78 seconds. Research-flow
+  checks: **5 passed**, 3.90 seconds, including automatic transcript attachment,
+  consent withdrawal, legal hold, lost lease and booking lifecycle. These are
+  overlapping checkpoints, not an aggregate total.
+- Focused job/safety verification after dispatch-fence changes:
+  `backend/.venv/bin/python scripts/test_fresh.py -q tests/test_jobs.py
+  tests/test_connected_safety.py --tb=short`: **41 passed**, 8.48 seconds. Includes
+  same-workspace writes and cancellation while a synthetic provider waits, followed
+  by rejection of its late output and reauthorization of follow-up HTTP operations.
+- Final isolated PostgreSQL/Valkey regression:
+  `backend/.venv/bin/python scripts/test_fresh.py --with-cache -q --tb=short`:
+  **1,609 passed, 1 skipped, 5 deselected**, zero failures, **411.33 seconds**.
+  The host-only FFmpeg skip (`test_media_voice.py:130`) passed in the image below.
+  Exclusions are two frontend-dependent tests, two browser tests and one opt-in
+  load test. OpenAPI drift is included. Dedicated temporary PostgreSQL/Valkey
+  resources were cleaned; no existing database/volume was reset.
+- Rebuilt `elseview-backend-connected-test` from the existing pinned backend
+  Dockerfile using `docker build -t elseview-backend-connected-test backend`.
+  The image includes the pinned FFmpeg and hashed `cryptography` dependency.
+  Offline current-source media/protocol verification:
+  `docker run --rm --network none --read-only --tmpfs /tmp:rw,mode=1777
+  --mount "type=bind,source=$PWD/backend,target=/app/backend,readonly"
+  elseview-backend-connected-test python -m pytest -q -p no:cacheprovider
+  --basetemp=/tmp/connected-media tests/test_media_voice.py tests/test_media_response.py
+  tests/test_api_contract.py tests/test_connected.py tests/test_connected_protocol.py
+  tests/test_privacy_ops.py -m 'not db' --tb=short`:
+  **101 passed, 7 database cases deselected**, **3.77 seconds**, no skips. Current
+  source/tests were mounted read-only, so copied image source age cannot hide drift.
+  Synthetic real FFmpeg decode/media rejection and authorized ranges were exercised.
+- Final financial/migration/schema/API focused command:
+  `backend/.venv/bin/python scripts/test_fresh.py -q tests/test_connected_financial.py
+  tests/test_connected.py::test_unknown_provider_outcome_is_not_retried_and_keeps_reservation
+  tests/test_db.py::test_metadata_schema tests/test_db.py::test_migration_down_up_and_repeat
+  tests/test_phase_contracts.py::test_new_migrations_round_trip_on_guarded_database
+  tests/test_api_contract.py --tb=short`: **12 passed**, **21.96 seconds**. This includes
+  concurrent single reservation, audited financial-only reconciliation after requester
+  erasure, guarded migration round-trips and Alembic metadata agreement.
+- Runtime and Alembic agree on sole head **`039_connected_workflows`**; **229 OpenAPI
+  paths**, **113 loaded ORM tables**. Checked-in OpenAPI exactly matches generation
+  from synthetic settings. `ruff check backend`, `ruff format --check backend`
+  (**309 Python files**) and `git diff --check` pass. `uv pip check` reports **57
+  compatible installed packages**; this is dependency consistency, not a vulnerability
+  scan. Exact final logs are retained locally under `.tools/connected-regression-verified.log`,
+  `.tools/connected-media-verified.log` and `.tools/connected-contracts-verified.log`.
+- Final participation-specific checks:
+  `backend/.venv/bin/python scripts/test_fresh.py -q tests/test_connected_research.py
+  --tb=short`: **7 passed**, **5.24 seconds**. Study consent/withdrawn participation
+  independently fences new and already-claimed transcription/calendar work, even
+  without a changed workspace epoch. These cases also pass in the final aggregate.
+
+The existing recording-withdrawal unit test's stub was extended to observe the new
+connected invalidation hook; its existing assertions remain, and a new assertion
+checks the hook. Full PostgreSQL tests exercise the real producer implementation.
+No frontend/browser/load test was substituted for backend proof; the replacement
+frontend and missing `media.review` renderer were neither implemented nor tested.
+
+### External acceptance and deliberate boundaries
+
+1. **Implemented but awaiting live validation:** approved OpenAI account/rates/data
+   terms, real OAuth app registrations and callback interoperability (including
+   Figma's actual PKCE behavior), scoped test accounts, token expiry/rotation/revoke,
+   real Figma page access, Google ETag/conflict behavior, Linear lookup/create/delete,
+   timeout billing, orphan reconciliation and verified provider-side deletion.
+   Vendor APIs, quotas and paid quality have not been exercised.
+2. **Missing/excluded product scope:** frontend connection/consent/progress/recovery
+   UI and `media.review`; human transcript correction editing/diarization; arbitrary
+   chatbot URLs/tools; unrestricted/two-way calendar mirroring or arbitrary design
+   and project mutations. These are not silently represented by the bounded adapters.
+   Figma manual revocation and provider processing/log-retention obligations remain
+   explicit remote requirements rather than simulated successes.
+3. **Production acceptance:** human dialect/research-quality evaluation, explicit
+   approval of the selected subprocessors and retention/ZDR terms, rate/price checks,
+   proxy callback-log redaction, encryption-key custody and rotation procedure,
+   off-device encrypted backup/RPO/RTO restore drill, host capacity/backup monitoring
+   and alert routing, sustained mixed-workload load/soak targets, commercial/privacy
+   review, rollout migration and launch authorization. Existing SMTP/webhook/chat
+   adapters also retain their separate live-validation gates.
+
+Official references inspected for provider selection/contracts:
+[OpenAI transcription](https://developers.openai.com/api/docs/guides/speech-to-text),
+[Whisper-1](https://developers.openai.com/api/docs/models/whisper-1),
+[GPT-4.1 mini](https://developers.openai.com/api/docs/models/gpt-4.1-mini),
+[Figma OAuth](https://developers.figma.com/docs/rest-api/oauth-apps/),
+[Google OAuth](https://developers.google.com/identity/protocols/oauth2/web-server),
+[Google event updates](https://developers.google.com/calendar/api/v3/reference/events/update),
+[Linear OAuth](https://linear.app/developers/oauth-2-0-authentication), and
+[OAuth Security BCP](https://www.rfc-editor.org/rfc/rfc9700.html).
+The precise customer contract and configuration names are in
+[Customer API](../../backend/CUSTOMER_API.md).
+
+## Earlier monitoring-only backend continuation — September 24, 2026
+
+**Partial implementation; provider selection is an unresolved dependency.** Before
+editing, local Alembic reported the sole code head `038_interview_drafts`, matching
+`app.db.REVISION`. No applicable `AGENTS.md` was present. The existing dirty backend
+and replacement frontend were preserved. This continuation adds no migration and
+does not inspect or migrate an operator database. Local environment key-name
+inspection found no provider settings; `config.py`, `.env.example`, and `AI_CLOUD.md`
+explicitly leave vendors/models unselected. An installed OpenAI SDK is not evidence
+that OpenAI has been selected or approved for recording data.
+
+### Implemented and tested locally
+
+Extended the existing admin-only operations projection with actual worker health,
+configurable due-queue lag, and currency-separated AI budget/uncertain-charge
+observations. An enabled-but-stopped/quarantined worker is now visible. A successful
+job with a valid AI draft but missing usage now raises a reconciliation alert until
+its retained uncertain attempt is settled. Daily and study budgets are not counted
+twice; foreign-workspace balances are excluded. No remote calls, automatic retry,
+reservation release or new personal-data producer is introduced. The projection
+requires current unrestricted admin/owner membership, contains no content or
+provider references, is not cached, and writes no monitoring artifact. Existing
+consent/hold/erasure/restore controls and retained financial minima are unchanged.
+
+- Initial focused worker/operations/reliability run: **60 passed, 1 load test
+  deselected**, 7.85 seconds. Final focused command:
+  `backend/.venv/bin/python scripts/test_fresh.py -q tests/test_operations_health.py
+  tests/test_operations_db.py tests/test_api_contract.py --tb=short`: **17 passed**,
+  3.58 seconds. These overlap and must not be added to the aggregate count.
+- Offline FFmpeg image with current backend mounted read-only:
+  `docker run --rm --network none --read-only --tmpfs /tmp:rw,mode=1777 --mount
+  "type=bind,source=$PWD/backend,target=/app/backend,readonly"
+  elseview-backend-media-test python -m pytest -q -p no:cacheprovider
+  --basetemp=/tmp/media-tests tests/test_media_voice.py tests/test_media_response.py
+  tests/test_api_contract.py tests/test_operations_health.py -m 'not db' --tb=short`:
+  **50 passed, 4 database tests deselected**, 2.87 seconds. Real synthetic H.264/AAC
+  decode, malformed/codec rejection, resource limits and authorized range contracts
+  were exercised. The cached image's installed tools/dependencies were reused; this
+  was not a deployment or rebuild of the running application.
+- Explicit migration/schema check:
+  `backend/.venv/bin/python scripts/test_fresh.py -q
+  tests/test_db.py::test_metadata_schema
+  tests/test_db.py::test_migration_down_up_and_repeat
+  tests/test_phase_contracts.py::test_new_migrations_round_trip_on_guarded_database
+  --tb=short`: **3 passed**, 3.63 seconds. Schema agrees with current ORM metadata;
+  downgrade/re-upgrade checks used only freshly created disposable child databases.
+  Sole code head remains `038_interview_drafts`.
+- Full isolated regression:
+  `backend/.venv/bin/python scripts/test_fresh.py --with-cache -q --tb=short`:
+  **1,539 passed, 1 skipped, 5 deselected**, zero failures, 273.43 seconds. The sole
+  skip is `test_media_voice.py:130` because host FFmpeg paths are not configured;
+  the real decode test passed in the offline image above. The exclusions are two
+  frontend-dependent tests, two browser tests and one opt-in load test. OpenAPI
+  drift is included in this aggregate, unlike the previous checkpoint's separate
+  check. Fresh authenticated nonpersistent Valkey and RAM-backed PostgreSQL were
+  provisioned and cleaned by the isolated harness; existing resources were untouched.
+- Ruff lint/format and `git diff --check` passed; **294 Python files** checked for
+  formatting. Installed dependency metadata: **56 distributions, zero conflicts**.
+  OpenAPI regenerated from synthetic configuration: **219 paths**.
+
+### Missing/blocked versus live-validation and production gates
+
+| Classification | Exact remaining scope |
+|---|---|
+| Missing/blocked development | Automatic transcription jobs, bounded chatbot connector, selected design/calendar/project adapters, OAuth credential lifecycle/reconciliation, and privacy/hold/retention/erasure/restore coverage for their future artifacts and remote operations. These were not replaced with mock-only interfaces or claimed implemented. |
+| Required provider decisions | Transcription provider/model/API/version, timestamps/language/size limits and bounded prices; chatbot fixed approved destination/version/fictional fixtures; one vendor per integration with approved resource/action scopes, registered redirect and credential custody, refresh/revocation behavior, data handling and deletion/retention constraints. One consolidated question was sent; no selection has been supplied. |
+| Implemented but awaiting live validation | Existing SMTP delivery, generic webhooks and chat-completion AI transport retain local mock-transport evidence only. No live validation was performed in this continuation. The missing adapters above do **not** belong in this category. |
+| Production acceptance | Approved accounts and synthetic live-test budgets; actual vendor retention/deletion and orphan-operation handling; human dialect/transcription/research review; host disk/database/backup monitoring and alert routing; sustained production load/soak and prolonged mixed-workload tests after new handlers exist; encrypted off-device backup/key custody/RPO/RTO drill; commercial/privacy and launch sign-off. |
+| Frontend dependencies, excluded | Replacement frontend integration, tolerant handling of added operations fields/attention codes, all new future workflow UI, and the absent `media.review` renderer. No frontend files were edited, built or tested. |
+
+Official documentation checked September 24:
+[OpenAI file transcription](https://developers.openai.com/api/docs/guides/speech-to-text)
+requires a distinct audio API with a 25 MB upload ceiling and model-dependent
+segment/timestamp support; the existing 64 MiB recording allowance cannot simply
+be forwarded to it. This is a candidate compatibility observation, not vendor
+selection. [OAuth Security BCP (RFC 9700)](https://www.rfc-editor.org/rfc/rfc9700.html)
+provides the authorization-code/PKCE, exact redirect, least-privilege and refresh-token
+security baseline; actual vendor support and scope semantics still require selection.
+
+No frontend execution, live provider traffic, messages, money movement, operator
+database reset, deployment, commit or push was authorized or performed. The full
+backend remains incomplete; the table identifies implementation gaps, not just
+production approval paperwork.
+
+## Previous backend-only verification — September 24, 2026
+
+Current schema head: **`038_interview_drafts`**. The backend completion increments
+cover transactional domain webhooks, multistep AI/subgroup disclosure safeguards,
+immutable diary prompt plans, managed research and software credits, bounded
+WAV/MP4 media, reference-based voice scoring, and reviewed extractive interview
+drafts with report and privacy invalidation. See [customer API guidance](../../backend/CUSTOMER_API.md)
+and [model/test inventory](MODEL_TEST_MATRIX.md).
+
+- `backend/.venv/bin/python scripts/test_fresh.py --with-cache -q --tb=short -k 'not generated_openapi_matches_reviewed_artifact'`: **1,528 passed, 1 skipped, 6 deselected**, no failures, 265.43 seconds. Fresh isolated PostgreSQL/Valkey only. The skipped real-FFmpeg test passed in the image below. The exclusions are the separately tested OpenAPI artifact check, two frontend-dependent checks, two browser tests and the opt-in load test.
+- Regenerated **219-path OpenAPI**; `python -m pytest -q tests/test_api_contract.py`: **6 passed**. The suite enforces explicit JSON success schemas and authentication/error contracts. Binary and no-content responses remain distinct.
+- Rebuilt `elseview-backend-media-test` from the final backend source with the explicitly approved pinned FFmpeg package. `docker run --rm --network none elseview-backend-media-test python -m pytest -q tests/test_media_voice.py tests/test_api_contract.py`: **17 passed**, including real synthetic H.264/AAC MP4, truncated/wrong-codec rejection and process limits. This does not deploy or restart the configured backend service.
+- Opt-in isolated load regression (`TEST_ALLOW_LOAD=1 P18_METRICS_PATH=/tmp/elseview-backend-load-20260924.json backend/.venv/bin/python scripts/test_fresh.py -q tests/test_reliability.py -m load --tb=short`): **1 passed, 3 deselected**. Four concurrent sessions persisted48 writes and4 submissions while mock inference was blocked; autosave p50 30.34ms/p95 45.17ms over0.537 seconds. This is a short in-process ASGI regression, not production load/soak or HTTP/proxy capacity evidence. [Aggregate measurements](evidence/load-038-20260924.json) record hardware, payloads, memory and topology.
+- Ruff lint and formatting passed for **291 files**. `git diff --check` passed. Installed dependency metadata check: **56 distributions, zero conflicts**.
+- The aggregate includes real archive restore/private-file replay, credit concurrency and direct-SQL guards, migration round trips/schema drift, recording retention under an unrelated legal hold, and idempotent asset-deletion derivative cleanup. Focused runs overlap with this aggregate and are not added to its count.
+
+No frontend test/build, live provider call, operator database reset/migration,
+payment transfer, deployment, commit or push occurred. The replacement frontend
+is not covered by historical UI evidence below. Backend tests do not establish
+production capacity, human language/research quality or legal acceptance.
+
+**The full backend plan remains incomplete:** automatic cloud transcription,
+external chatbot sandbox and design/calendar/project vendor adapters/OAuth still
+need selected-provider requirements and implementation. Live provider validation,
+commercial/privacy review, integrated product acceptance, production load/soak,
+off-device encrypted backups/key custody and launch approval remain separate
+gates. `media.review` is not publishable without its frontend renderer.
+
+## Historical 029 backend verification — September 24, 2026
+
+At the user's request, this pass verified only the backend; no frontend build, browser or frontend tests were run.
+
+- `backend/.venv/bin/python scripts/test_fresh.py --with-cache -q --tb=short`: **1,439 passed, 3 deselected**, zero failures or skips, in 244.76 seconds. This uses new isolated PostgreSQL/Valkey containers, not operator databases. The exclusions are two browser tests and one load test; live-provider execution remains disabled.
+- The suite now covers the current `029_ai_orchestration` migration/readiness chain and revision-2 AI tests. Earlier notes below describing029 as in progress and a pending aggregate run are historical.
+- Updated the legacy AI privacy unit-test double with its required configuration and flush behavior; retained raw-data legal-hold assertions and added flush/coverage assertions. Fixed formatting in three backend files. No application behavior was changed in this pass.
+- Backend Ruff lint and formatting passed (253 files), as did `git diff --check`. The virtual environment lacks pip; an equivalent installed-requirement metadata check using `importlib.metadata` and `packaging` passed for56 distributions. No packages were installed.
+
+**Backend verification passed, but the entire completion plan is not feature-complete.** Subgroup AI, remaining media/transcription/sandbox automation, vendor integrations and commercial acceptance remain on the recorded backlog. Passing existing tests does not establish those missing features or production approval. Frontend work is excluded from this latest request; no deployment, live provider calls, transfers or operator migration occurred.
+
 ## Completion-plan increment — partial development
 
 Implemented increments include approval-gated verified-TLS SMTP and durable auth/recruitment invitation delivery, explicit opt-in interview/diary email reminders, explicit auth/assessment/collection/history success schemas, consented country/city/experience targeting, versioned single-call AI depth/estimation, private PDF/XLSX rendering outside database locks, and V2 prepare/start five-second collection. Reviewed language assessments include immutable approved versions, independent human decisions/appeals, expiry, retained-consent history/withdrawal, recruitment provenance and privacy/restore hooks. Genuine assessment-content approval remains external. Diary recovery rotates credentials under revision/privacy locks without resetting answers, locale, assignment or accounting.

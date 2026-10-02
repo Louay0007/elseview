@@ -48,22 +48,11 @@ export default function History() {
   const shown = events;
 
   return (
-    <WorkspaceShell
-      workspaceName={workspaceName}
-      displayName={displayName}
-      firstName={firstName}
-      role={role}
-      onSettings={() => goWithParams("/settings")}
-      onBilling={() => goWithParams("/workspace/billing")}
-      onCredits={() => goWithParams("/workspace/credits")}
-      onAccount={() => goWithParams("/account")}
-      onNotifications={() => goWithParams("/account/notifications")}
-      onRefer={() => goWithParams("/account/refer")}
-    >
+      <WorkspaceShell >
       <BackToHome />
       <p className="mt-6 text-[13px] font-medium uppercase tracking-[0.08em] text-[#6d6d70]">{text({ en: "Your work", fr: "Votre travail" })}</p>
       <h1 className="mt-1 flex items-center gap-3 text-[30px] font-bold tracking-[-0.02em] text-black">
-        <HistoryIcon className="size-8" strokeWidth={1.6} aria-hidden="true" />
+      <HistoryIcon className="size-8" strokeWidth={1.6} aria-hidden="true" />
         {text({ en: "History", fr: "Historique" })}
       </h1>
       <p className="mt-3 max-w-[72ch] text-[16px] leading-relaxed text-[#6d6d70]">
@@ -78,85 +67,85 @@ export default function History() {
       ]} />
 
       <div className="mt-8 grid gap-4 lg:grid-cols-5">
-        <Card className="rounded-[22px] lg:col-span-3">
-          <CardHeader>
-            <CardTitle>{text({ en: "Over time", fr: "Activité dans le temps" })}</CardTitle>
-            <CardDescription>{text({ en: "Per week.", fr: "Actions par semaine." })}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[260px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={eventsTrend} margin={{ top: 8, right: 8, bottom: 0, left: -12 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e4e4e7" />
-                  <XAxis dataKey="week" tick={{ fontSize: 12, fill: "#6d6d70" }} tickLine={false} axisLine={{ stroke: "#e4e4e7" }} />
-                  <YAxis tick={{ fontSize: 12, fill: "#6d6d70" }} tickLine={false} axisLine={false} />
-                  <Tooltip />
-                  <Area type="monotone" dataKey="events" name="Events" stroke="#1d4ed8" strokeWidth={2.5} fill="#dbeafe" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
+      <Card className="rounded-[22px] lg:col-span-3">
+      <CardHeader>
+      <CardTitle>{text({ en: "Over time", fr: "Activité dans le temps" })}</CardTitle>
+      <CardDescription>{text({ en: "Per week.", fr: "Actions par semaine." })}</CardDescription>
+      </CardHeader>
+      <CardContent>
+      <div className="h-[260px] w-full">
+      <ResponsiveContainer width="100%" height="100%">
+      <AreaChart data={eventsTrend} margin={{ top: 8, right: 8, bottom: 0, left: -12 }}>
+      <CartesianGrid strokeDasharray="3 3" stroke="#e4e4e7" />
+      <XAxis dataKey="week" tick={{ fontSize: 12, fill: "#6d6d70" }} tickLine={false} axisLine={{ stroke: "#e4e4e7" }} />
+      <YAxis tick={{ fontSize: 12, fill: "#6d6d70" }} tickLine={false} axisLine={false} />
+      <Tooltip />
+      <Area type="monotone" dataKey="events" name="Events" stroke="#1d4ed8" strokeWidth={2.5} fill="#dbeafe" />
+      </AreaChart>
+      </ResponsiveContainer>
+      </div>
+      </CardContent>
+      </Card>
 
-        <Card className="rounded-[22px] lg:col-span-2">
-          <CardHeader>
-            <CardTitle>{text({ en: "By kind", fr: "Actions par type" })}</CardTitle>
-            <CardDescription>{text({ en: "Most common first.", fr: "Ce qui arrive le plus." })}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[260px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={eventsByType} layout="vertical" margin={{ top: 0, right: 12, bottom: 0, left: 8 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e4e4e7" horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 12, fill: "#6d6d70" }} tickLine={false} axisLine={false} />
-                  <YAxis type="category" dataKey="type" width={64} tick={{ fontSize: 12, fill: "#6d6d70" }} tickLine={false} axisLine={false} />
-                  <Tooltip />
-                  <Bar dataKey="events" name="Events" fill="#1d4ed8" radius={[0, 8, 8, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
+      <Card className="rounded-[22px] lg:col-span-2">
+      <CardHeader>
+      <CardTitle>{text({ en: "By kind", fr: "Actions par type" })}</CardTitle>
+      <CardDescription>{text({ en: "Most common first.", fr: "Ce qui arrive le plus." })}</CardDescription>
+      </CardHeader>
+      <CardContent>
+      <div className="h-[260px] w-full">
+      <ResponsiveContainer width="100%" height="100%">
+      <BarChart data={eventsByType} layout="vertical" margin={{ top: 0, right: 12, bottom: 0, left: 8 }}>
+      <CartesianGrid strokeDasharray="3 3" stroke="#e4e4e7" horizontal={false} />
+      <XAxis type="number" tick={{ fontSize: 12, fill: "#6d6d70" }} tickLine={false} axisLine={false} />
+      <YAxis type="category" dataKey="type" width={64} tick={{ fontSize: 12, fill: "#6d6d70" }} tickLine={false} axisLine={false} />
+      <Tooltip />
+      <Bar dataKey="events" name="Events" fill="#1d4ed8" radius={[0, 8, 8, 0]} />
+      </BarChart>
+      </ResponsiveContainer>
+      </div>
+      </CardContent>
+      </Card>
       </div>
 
       <Card className="mt-8 rounded-[22px]">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><FileText className="size-5" />{text({ en: "Your studies", fr: "Vos études" })}</CardTitle>
-          <CardDescription>{text({ en: "Draft, publish, pause, close.", fr: "Brouillon → publication → pause ou clôture. Les versions publiées sont verrouillées. Mêmes états que le backend : brouillon, en direct, en pause, clôturé." })}</CardDescription>
-        </CardHeader>
-        <CardContent>
+      <CardHeader>
+      <CardTitle className="flex items-center gap-2"><FileText className="size-5" />{text({ en: "Your studies", fr: "Vos études" })}</CardTitle>
+      <CardDescription>{text({ en: "Draft, publish, pause, close.", fr: "Brouillon → publication → pause ou clôture. Les versions publiées sont verrouillées. Mêmes états que le backend : brouillon, en direct, en pause, clôturé." })}</CardDescription>
+      </CardHeader>
+      <CardContent>
           {historyError && <p role="alert" className="text-sm text-[#b42318]">{historyError}</p>}
-          <Table>
-            <TableHeader><TableRow><TableHead>{text({ en: "Study", fr: "Étude" })}</TableHead><TableHead>{text({ en: "Last change", fr: "Dernier changement" })}</TableHead><TableHead>{text({ en: "Status", fr: "État" })}</TableHead></TableRow></TableHeader>
-            <TableBody>
+      <Table>
+      <TableHeader><TableRow><TableHead>{text({ en: "Study", fr: "Étude" })}</TableHead><TableHead>{text({ en: "Last change", fr: "Dernier changement" })}</TableHead><TableHead>{text({ en: "Status", fr: "État" })}</TableHead></TableRow></TableHeader>
+      <TableBody>
               {lifecycle.map((item) => (
-                <TableRow key={item.title}>
-                  <TableCell><p className="font-semibold text-black">{item.title}</p><p className="text-xs text-[#6d6d70]">{item.version}</p></TableCell>
-                  <TableCell className="text-sm text-[#3a3a3c]">{item.last}</TableCell>
-                  <TableCell>
-                    <Badge variant={item.status === "live" ? "default" : item.status === "draft" ? "outline" : "secondary"}>{item.label}</Badge>
-                    <span className="mt-2 flex flex-wrap gap-2">
-                      <button type="button" className="rounded-full border border-[#e4e4e7] px-3 py-1 text-xs" onClick={() => setStudyState(item.id ?? item.title, "paused")}>{text({ en: "Pause", fr: "Pause" })}</button>
-                      <button type="button" className="rounded-full border border-[#e4e4e7] px-3 py-1 text-xs" onClick={() => setStudyState(item.id ?? item.title, "ready")}>{text({ en: "Resume", fr: "Reprendre" })}</button>
-                      <button type="button" className="rounded-full border border-[#e4e4e7] px-3 py-1 text-xs" onClick={() => setStudyState(item.id ?? item.title, "closed")}>{text({ en: "Close", fr: "Clôturer" })}</button>
-                    </span>
-                  </TableCell>
-                </TableRow>
+      <TableRow key={item.title}>
+      <TableCell><p className="font-semibold text-black">{item.title}</p><p className="text-xs text-[#6d6d70]">{item.version}</p></TableCell>
+      <TableCell className="text-sm text-[#3a3a3c]">{item.last}</TableCell>
+      <TableCell>
+      <Badge variant={item.status === "live" ? "default" : item.status === "draft" ? "outline" : "secondary"}>{item.label}</Badge>
+      <span className="mt-2 flex flex-wrap gap-2">
+      <button type="button" className="rounded-full border border-[#e4e4e7] px-3 py-1 text-xs" onClick={() => setStudyState(item.id ?? item.title, "paused")}>{text({ en: "Pause", fr: "Pause" })}</button>
+      <button type="button" className="rounded-full border border-[#e4e4e7] px-3 py-1 text-xs" onClick={() => setStudyState(item.id ?? item.title, "ready")}>{text({ en: "Resume", fr: "Reprendre" })}</button>
+      <button type="button" className="rounded-full border border-[#e4e4e7] px-3 py-1 text-xs" onClick={() => setStudyState(item.id ?? item.title, "closed")}>{text({ en: "Close", fr: "Clôturer" })}</button>
+      </span>
+      </TableCell>
+      </TableRow>
               ))}
-            </TableBody>
-          </Table>
-        </CardContent>
+      </TableBody>
+      </Table>
+      </CardContent>
       </Card>
 
       <Card className="mt-4 rounded-[22px]">
-        <CardHeader>
-          <CardTitle>{text({ en: "Full log", fr: "Journal complet" })}</CardTitle>
-          <CardDescription>{text({ en: "Newest first.", fr: "Plus récent d’abord. Filtrez par type." })}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-2" role="group" aria-label="Filter history">
+      <CardHeader>
+      <CardTitle>{text({ en: "Full log", fr: "Journal complet" })}</CardTitle>
+      <CardDescription>{text({ en: "Newest first.", fr: "Plus récent d’abord. Filtrez par type." })}</CardDescription>
+      </CardHeader>
+      <CardContent>
+      <div className="flex flex-wrap gap-2" role="group" aria-label="Filter history">
             {filters.map((f) => (
-              <button
+      <button
                 key={f}
                 type="button"
                 onClick={() => setFilter(f)}
@@ -164,26 +153,26 @@ export default function History() {
                 className={`inline-flex min-h-[40px] items-center rounded-full px-5 text-[14px] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0a84ff] ${filter === f ? "bg-[#18181b] text-white" : "border border-[#e4e4e7] text-black hover:bg-[#f7f8fa]"}`}
               >
                 {f === "All" ? text({ en: "All", fr: "Tout" }) : f}
-              </button>
+      </button>
             ))}
-          </div>
-          <Table>
-            <TableHeader><TableRow><TableHead>{text({ en: "Date", fr: "Date" })}</TableHead><TableHead>{text({ en: "Kind", fr: "Type" })}</TableHead><TableHead>{text({ en: "What happened", fr: "Quoi" })}</TableHead></TableRow></TableHeader>
-            <TableBody>
+      </div>
+      <Table>
+      <TableHeader><TableRow><TableHead>{text({ en: "Date", fr: "Date" })}</TableHead><TableHead>{text({ en: "Kind", fr: "Type" })}</TableHead><TableHead>{text({ en: "What happened", fr: "Quoi" })}</TableHead></TableRow></TableHeader>
+      <TableBody>
               {shown.map((e) => (
-                <TableRow key={`${e.date}-${e.title}`}>
-                  <TableCell className="whitespace-nowrap text-sm text-[#6d6d70]">{e.date}</TableCell>
-                  <TableCell><Badge variant="secondary">{e.type}</Badge></TableCell>
-                  <TableCell><p className="font-semibold text-black">{e.title}</p><p className="text-sm text-[#6d6d70]">{e.detail}</p></TableCell>
-                </TableRow>
+      <TableRow key={`${e.date}-${e.title}`}>
+      <TableCell className="whitespace-nowrap text-sm text-[#6d6d70]">{e.date}</TableCell>
+      <TableCell><Badge variant="secondary">{e.type}</Badge></TableCell>
+      <TableCell><p className="font-semibold text-black">{e.title}</p><p className="text-sm text-[#6d6d70]">{e.detail}</p></TableCell>
+      </TableRow>
               ))}
-            </TableBody>
-          </Table>
+      </TableBody>
+      </Table>
           {shown.length === 0 && (
-            <p className="py-6 text-center text-sm text-[#6d6d70]">{text({ en: "Nothing here yet.", fr: "Rien ici pour l'instant." })}</p>
+      <p className="py-6 text-center text-sm text-[#6d6d70]">{text({ en: "Nothing here yet.", fr: "Rien ici pour l'instant." })}</p>
           )}
-        </CardContent>
+      </CardContent>
       </Card>
-    </WorkspaceShell>
+      </WorkspaceShell>
   );
 }

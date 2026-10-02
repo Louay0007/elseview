@@ -1,1 +1,0 @@
-{"manifest": {"version": 4, "assessment_revocations": [], "tombstones": [], "holds": [], "contact_holds": [], "accounts": [], "events": [{"id": "247b7e1e-787b-4687-897d-e2356479e167", "workspace_id": "8c6fb953-135a-43b4-9b7d-27e7f23cf6a2", "resource_id": "../private", "action": "asset_delete"}]}, "signature": "2a2a4167a4f1324451e23188e47c0903376de1d8e98e9c789d6e06c6b5d60347"}

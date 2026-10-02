@@ -3,6 +3,8 @@ services:
     build:
       target: development
     # Match the production listener, so the base port mapping remains unchanged.
+    environment:
+      API_PROXY_TARGET: http://backend:8000
     command: ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "8080", "--strictPort"]
   backend:
     volumes:
@@ -11,5 +13,4 @@ services:
       - ./compose.dev.yaml:/app/compose.dev.yaml:ro
       - ./scripts:/app/scripts:ro
       - ./frontend/Dockerfile:/app/frontend/Dockerfile:ro
-      - ./frontend/AdvancedMethods.jsx:/app/frontend/AdvancedMethods.jsx:ro
     command: ["python", "-m", "uvicorn", "app.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000", "--no-access-log", "--reload"]

@@ -4,6 +4,115 @@
 **Status:** Implementation started at the user's request; partial development increments are recorded below. This plan does not authorize database resets, provider activation, production migrations or release.  
 **Goal:** Complete the research-platform idea, including the backend, required product interfaces, full acceptance evidence and production gates—not just close the existing phase labels.
 
+## Current selected-provider backend checkpoint — September 24, 2026
+
+**Code head: `039_connected_workflows`.** The user delegated provider selection;
+there is no remaining provider-choice question blocking implementation. This
+checkpoint supersedes both the earlier 038 monitoring-only block and the 029-era
+backlog below. It does not authorize live calls, spending, production migration,
+frontend work or deployment.
+
+Implemented backend scope:
+- OpenAI Whisper-1 automatic WAV transcription with independent consent, bounded
+  durable chunks, source/language/timestamp/machine provenance, cancellation,
+  reservation accounting, safe retries and retained uncertain outcomes.
+- A pinned GPT-4.1 mini three-turn fictional sandbox with immutable transcripts,
+  fixed destination/fixture, no arbitrary prompts, tools or URLs, and bounded cost.
+- Figma file snapshots, Google primary-calendar booking synchronization and Linear
+  approved-report-reference issues. Encrypted OAuth, exact callback/state/cookie
+  binding, scoped resources, refresh/revocation, ETag/stable-ID reconciliation,
+  explicit safe recovery and remote cleanup are implemented. Figma manual remote
+  revocation is explicit; unsupported provider capabilities are not simulated.
+- New artifacts participate in consent/authorization, legal holds, retention,
+  erasure and restore replay. Restore destroys credential capabilities and retains
+  ambiguous budgets instead of replaying them. The dispatch fence no longer blocks
+  same-workspace writes while a provider response is pending; follow-up requests
+  recheck current authority. Operations summaries include connected-workflow health.
+
+**Verification:** final isolated PostgreSQL/Valkey regression **1,609 passed,
+1 host FFmpeg skip, 5 frontend/browser/load exclusions**, 411.33 seconds. Rebuilt
+offline FFmpeg image **101 passed, 7 database cases deselected**, with no skips.
+Focused financial/migration/schema/API checks **12 passed**; lint/formatting and
+dependency consistency pass. Runtime has **229 OpenAPI paths** and **113 ORM tables**.
+The exact commands and scope are in
+[Implementation status](docs/backend/IMPLEMENTATION_STATUS.md).
+
+**Implemented but awaiting live validation:** all five selected provider integrations,
+real OAuth registrations/expiry/rotation/revocation, remote conflicts/orphan cleanup,
+actual usage/billing and processing-retention terms. They remain disabled by default;
+no real messages, model calls, charges or deployment occurred.
+
+**Outside this bounded increment / production gates:** the replacement frontend and
+`media.review` renderer; transcript correction editing/diarization; arbitrary chatbot
+connectivity/tools or unrestricted two-way vendor synchronization; human dialect and
+research-quality evaluation; approved provider/DPA/ZDR terms; callback-log redaction,
+secret custody/rotation, sustained load/soak and host monitoring, encrypted off-device
+restore/RPO/RTO acceptance and explicit rollout approval. The selected contracts,
+scopes and bounds are in [Customer API](backend/CUSTOMER_API.md). No claim of a
+perfect backend or production acceptance is made.
+
+## Earlier schema-038 checkpoint — September 24, 2026
+
+The following block is retained historical evidence, not the current gap inventory.
+
+Schema head: `038_interview_drafts`. This checkpoint supersedes the historical
+029-era backlog descriptions below. It records backend development only; the
+replacement frontend has not been integrated or tested in this pass.
+
+- Transactional study/report webhooks include signed delivery, replay, issuer/source
+  rechecks and dispatch fencing. Customer API documentation covers their contract.
+- Multistep AI includes a code-calculated, restricted subgroup release path and
+  synthetic multilingual benchmark fixtures; no live model-quality claim is made.
+- Diaries pin immutable initial/repeating prompt plans. Recording workflows support
+  exact transcript versions and reviewed extractive highlights/follow-ups, attached
+  only to authorized raw report views/exports. Withdrawal invalidates derivatives.
+- Managed-research intake/quotes and purchased software credits have database-backed
+  state transitions, immutable TND prices/tax, manual payment evidence, included-first
+  and FIFO redemption, quota checks, and unused-only reversal. Credits are
+  nonexpiring, workspace-bound product units; active subscriptions are required.
+- The approved FFmpeg dependency is included in the backend image. Real MP4
+  validation is bounded by codec/stream/duration/size/process limits. WAV/MP4
+  downloads support authorized byte ranges; voice comparison uses supplied human
+  reference/hypothesis transcripts. The media-review renderer is still absent.
+- All JSON success routes have explicit response models; the checked OpenAPI has
+  219 paths. Operational queue summaries are admin-only. A real archive/private-file
+  restore test verifies quarantine and post-snapshot deletion replay.
+- The backend continuation adds actual embedded-worker health, configurable due-queue
+  lag alerts and currency-separated AI budget/uncertain-charge observations. A valid
+  AI draft with a successful job can still require provider-charge reconciliation;
+  monitoring now reports that independently. No new artifacts or remote operations
+  were introduced, and retained budgets are never released by monitoring.
+
+**Still incomplete:** automatic cloud transcription, the external chatbot sandbox,
+chosen design/calendar/project vendor adapters and OAuth workflows. These need
+selected providers and their account/data-handling constraints; no live provider
+was activated. Human research/commercial/privacy review, frontend integration,
+production load/soak and encrypted off-device backup/key-custody acceptance also
+remain. Passing backend tests does not close these feature or release gates.
+
+Continuation verification: **17 focused operations/privacy/API tests passed**;
+**50 offline FFmpeg-image tests passed, 4 database tests deselected**. Full isolated
+PostgreSQL/Valkey regression: **1,539 passed, 1 skipped, 5 deselected** in 273.43
+seconds, including OpenAPI drift. The host FFmpeg skip passed in the image; the five
+exclusions are frontend/browser/load tests. Explicit schema/migration checks:
+**3 passed**. Lint, formatting, dependency metadata and whitespace checks passed.
+Exact commands and scope are in
+[Implementation status](docs/backend/IMPLEMENTATION_STATUS.md). The previous
+checkpoint was **1,528 passed, 1 skipped, 6 deselected** and remains historical.
+
+Provider selection is a concrete unresolved development dependency: local provider
+configuration is absent and the requirements deliberately do not choose vendors.
+One consolidated decision request covers transcription/model, chatbot endpoint and
+one design/calendar/project vendor, approved scopes, retention and cost limits.
+No provider-specific implementation is claimed while awaiting that decision.
+Existing SMTP/webhook/chat adapters are implemented but await live validation;
+missing transcription/sandbox/vendor/OAuth work is a different category. External
+production gates additionally include host capacity/backup monitoring and alert
+routing, sustained mixed-workload acceptance, provider/privacy/commercial review,
+encrypted off-device restore and an explicit launch decision.
+No operator database reset/migration, deployment, money transfer, commit or push
+was performed. Existing user/frontend edits were preserved.
+
 ## 1. Scope, baseline and meaning of complete
 
 Sources: [research-platform idea](RESEARCH_PLATFORM.md), the research-platform section of [startup ideas](STARTUP_IDEAS.md), [original P01–P19 plan](BACKEND_IMPLEMENTATION_PLAN.md), [architecture](BACKEND_BLUEPRINT.md), [feature contracts](docs/backend/FEATURE_CONTRACTS.md), [research methods](docs/backend/RESEARCH_METHODS.md), [implementation evidence](docs/backend/IMPLEMENTATION_STATUS.md), and [P19 story map](docs/backend/P19_ACCEPTANCE.md).
@@ -36,7 +145,9 @@ A disabled or unvalidated integration stays `blocked-external`, not `done`. If a
 - Conference hosting, guaranteed prototype cross-origin instrumentation, clinical/legal certification, representative sampling guarantees and automated emotion/fraud judgments are not promised.
 - No provider is selected by this plan. Verify current official APIs, permissions, retention and pricing before implementation/activation; secrets remain outside source control.
 
-### Current implementation checkpoint — partial, not acceptance
+### Historical 029 implementation checkpoint — partial, not acceptance
+
+**Historical backend-only verification (September 24, 2026):** At the user's request, frontend work/testing was excluded. The fresh isolated PostgreSQL/Valkey backend suite passed **1,439 tests, zero failures/skips, 3 deselected** (two browser tests and one load test), including the current029 migration/readiness and revision-2 AI tests. Backend lint, formatting, installed-dependency metadata and diff whitespace checks passed. This supersedes the pending aggregate/029 validation notes below, not the remaining feature backlog or external acceptance gates. See [latest backend evidence](docs/backend/IMPLEMENTATION_STATUS.md#latest-backend-only-verification--september-24-2026). The plan is not claimed fully implemented.
 
 | Package | Implemented in this checkpoint | Still required before package completion |
 |---|---|---|
@@ -88,15 +199,15 @@ A combined actual production-build account/API/PostgreSQL/Valkey/cache/harness/h
 
 ## 3. Ordered work packages
 
-Every package starts `pending`. A package closes only after its listed evidence exists. Each implementation change includes a narrow immediate test, then relevant integration/privacy/contract regression; run the complete guarded suite at a release checkpoint.
+Checked items record implemented backend slices; they do not close an entire package. A package closes only after all its listed evidence exists. Each implementation change includes a narrow immediate test, then relevant integration/privacy/contract regression; run the complete guarded suite at a release checkpoint.
 
 ### C01 — Reconcile scope and finish shared contracts
 
 **Owner:** backend + product + test. **Depends on:** none.
 
 - [ ] Turn the coverage map into exact cases: implemented, partial, missing, externally blocked, or explicitly out of scope, with test identifiers and evidence dates.
-- [ ] Reconcile README/current status/model inventory, including migrations 018–022 and current physical model names; keep historical test counts dated.
-- [ ] Add explicit success-response schemas to affected APIs, then cover remaining public success projections. Preserve safe field sets and stable HTTP/error contracts.
+- [x] Reconcile README/current status/model inventory, including migrations 018–022 and current physical model names; keep historical test counts dated.
+- [x] Add explicit success-response schemas to affected APIs, then cover remaining public success projections. Preserve safe field sets and stable HTTP/error contracts.
 - [ ] Update checked OpenAPI and frontend contracts together; specify pagination, status transitions, conflict/retry behavior and capability expiry.
 - [ ] Define privacy ownership and durable job lifecycle for every planned artifact before adding its producer. Document dispatch/cancellation/unknown-external-outcome semantics.
 
@@ -196,11 +307,11 @@ Every package starts `pending`. A package closes only after its listed evidence 
 
 **Owner:** backend + frontend + integration operator. **Depends on:** C01, C02; relevant C04/C07 artifacts.
 
-- [ ] Expand test-only webhooks to a documented minimal real event catalogue, such as approved-report availability and study lifecycle changes. Emit safe metadata transactionally with durable jobs, stable delivery IDs, signed timestamps and bounded retry.
-- [ ] Let authorized customers inspect delivery status/replay safely. Recheck integration, issuer authority and current source permissions before dispatch; do not embed research answers or capabilities by default.
+- [x] Expand test-only webhooks to a documented minimal real event catalogue, such as approved-report availability and study lifecycle changes. Emit safe metadata transactionally with durable jobs, stable delivery IDs, signed timestamps and bounded retry.
+- [x] Let authorized customers inspect delivery status/replay safely. Recheck integration, issuer authority and current source permissions before dispatch; do not embed research answers or capabilities by default.
 - [ ] Implement one approved design-tool connector, one calendar synchronization connector and one project-tool workflow. Choose vendors during scope approval; local ICS and public design links remain useful fallbacks, not proof of synchronization.
 - [ ] Define OAuth/credential storage, refresh/revocation, least-privilege scope, permission changes, rate limits, reconciliation and remote deletion behavior. Handle callbacks/redirects without arbitrary destinations.
-- [ ] Publish safe customer API documentation and examples from typed contracts, including scoped API keys, pagination, retries, limits and revocation.
+- [x] Publish safe customer API documentation and examples from typed contracts, including scoped API keys, pagination, retries, limits and revocation.
 
 **Paths:** `backend/app/collaboration/`, `jobs/`, `config.py`, `contracts.py`, integration settings frontend.
 
@@ -211,9 +322,9 @@ Every package starts `pending`. A package closes only after its listed evidence 
 **Owner:** backend + product + financial operator. **Depends on:** C01; coordinate C03/C05 selling units.
 
 - [ ] Validate every promised pricing mode: per study, per completed response, team allowances, specialist surcharge and depth-aware AI add-ons. Define response-count rounding, cancellation, partial AI coverage and unknown-provider-cost disclosure explicitly.
-- [ ] Resolve non-expiring software credits as a product entitlement contract distinct from cash, finite operational quotas, subscription allowances and participant rewards. Do not claim existing quota grants are prepaid money; add durable purchase/redemption accounting only if needed by reviewed terms.
+- [x] Resolve non-expiring software credits as a product entitlement contract distinct from cash, finite operational quotas, subscription allowances and participant rewards. Do not claim existing quota grants are prepaid money; add durable purchase/redemption accounting only if needed by reviewed terms.
 - [ ] Expose estimates, reservations, consumption, remaining allowance/credits, invoice status, manual payment evidence and full supported reversals. Preserve immutable historical prices and existing TND millime arithmetic.
-- [ ] Specify managed-research service intake, authorized staff handoff and reviewed quote/invoice workflow using existing workspaces/roles rather than a second marketplace.
+- [x] Specify managed-research service intake, authorized staff handoff and reviewed quote/invoice workflow using existing workspaces/roles rather than a second marketplace.
 - [ ] Define financial retention/minimization after the reviewed interval, subject to holds/open obligations; do not delete immutable ledgers merely to claim erasure. Obtain operator/legal decisions for any archival or eventual purge mechanism.
 
 **Paths:** `backend/app/billing/`, `reviews/`, publication/collection/AI hooks, commercial frontend.
@@ -356,4 +467,12 @@ Use separately approved guarded commands for load, live adapters, migration roun
 - [ ] Commercial/privacy/provider approvals and real pilot evidence exist; unresolved requirements remain visible.
 - [ ] Final documentation, model/test inventory and operational handoff are current; an explicit release decision is recorded.
 
-**Next implementation action:** stabilize and verify revision-2 AI integration, finish profile/navigation acceptance, then continue the remaining internal C01/C03/C05–C12 work (including diary prompt subsets and complete product journeys). External provider/human/commercial approvals remain separate blocked gates. The implemented increments above do not constitute full-plan completion or release authorization.
+**Next acceptance action:** use the selected-provider contracts implemented at
+`039_connected_workflows`; do not request provider selection again or redo the
+completed head038 work. Actual provider accounts/OAuth registrations, approved
+subprocessor and price/retention terms, synthetic live-test authorization, remote
+cleanup verification, sustained production load/restore evidence and launch approval
+remain external acceptance gates. Frontend integration and `media.review` remain
+separately unimplemented and untested. The bounded implementation does not claim
+arbitrary connector capabilities, transcript correction editing, all C07/C08/C12
+product acceptance, or permission to deploy.

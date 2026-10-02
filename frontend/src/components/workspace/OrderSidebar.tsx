@@ -2,6 +2,7 @@ import { useState } from "react";
 import { BadgeDollarSign, ChevronDown, Info, LifeBuoy } from "lucide-react";
 import { useWorkspaceNav } from "@/components/workspace/WorkspaceShell";
 import { PUBLISHING_FEE_CREDITS, panelCredits } from "@/lib/pricing";
+import { routes } from "@/lib/routes";
 
 type OrderSidebarProps = {
   participants: number;
@@ -59,10 +60,10 @@ export function OrderSidebar({ participants, panelLabel, speed, feesOpen = false
         <span className="text-[15px] font-bold text-black">Payment Total</span>
         <span className="text-[20px] font-bold text-black">${total}</span>
       </div>
-      <p className="mt-3 text-center text-[12.5px] text-[#6d6d70]">Save up to 20% when you <button type="button" onClick={() => nav.goWithParams("/workspace/credits/buy")} className="font-semibold text-[#1d4ed8] underline underline-offset-2">buy in bulk</button></p>
-      <button type="button" onClick={() => nav.goWithParams("/support")} className="mt-4 flex w-full items-center justify-center gap-2 rounded-full border border-[#e4e4e7] px-4 py-2.5 text-[13.5px] font-medium text-[#18181b] hover:bg-[#f7f7f8]">
-        <LifeBuoy className="size-4" strokeWidth={1.6} aria-hidden="true" />Support
-      </button>
+      <p className="mt-3 text-center text-[12.5px] text-[#6d6d70]">Save up to 20% when you <button type="button" onClick={() => nav.goWithParams(routes.buyCredits)} className="font-semibold text-[#1d4ed8] underline underline-offset-2">buy in bulk</button></p>
+      <p className="mt-4 flex w-full items-center justify-center gap-2 rounded-full border border-[#e4e4e7] px-4 py-2.5 text-[13.5px] font-medium text-[#18181b]">
+        <LifeBuoy className="size-4" strokeWidth={1.6} aria-hidden="true" />Support — use the Help button
+      </p>
     </aside>
   );
 }

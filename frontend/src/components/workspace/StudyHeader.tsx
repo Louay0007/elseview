@@ -3,6 +3,7 @@ import { ArrowLeft, Check, ChevronDown, Clock, Eye, Globe, Layers, LayoutGrid, P
 import { useAuthLocale } from "@/components/auth/AuthLocale";
 import { useWorkspaceNav } from "@/components/workspace/WorkspaceShell";
 import { methodByKey } from "@/lib/methods";
+import { routes } from "@/lib/routes";
 
 const MEDIUM_METHODS = new Set(["card_sort", "tree_test"]);
 
@@ -38,12 +39,12 @@ export function StudyHeader({ studyName, project, lang, method, saved = true, on
   const publish = () => {
     setMenuOpen(false);
     if (onPublish) onPublish();
-    else nav.goWithParams("/dashboard");
+    else nav.goWithParams(routes.dashboard);
   };
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <button type="button" onClick={() => nav.goWithParams("/dashboard")} aria-label={text({ en: "Back", fr: "Retour" })} className="grid size-10 place-items-center rounded-xl border border-[#e4e4e7] bg-white text-[#52525b] hover:bg-[#f4f4f5]"><ArrowLeft className="size-5" strokeWidth={1.8} aria-hidden="true" /></button>
+      <button type="button" onClick={() => nav.goWithParams(routes.dashboard)} aria-label={text({ en: "Back", fr: "Retour" })} className="grid size-10 place-items-center rounded-xl border border-[#e4e4e7] bg-white text-[#52525b] hover:bg-[#f4f4f5]"><ArrowLeft className="size-5" strokeWidth={1.8} aria-hidden="true" /></button>
       <p className="flex items-center gap-2 text-[19px] font-bold text-black">{studyName} <span className="grid size-7 place-items-center rounded-lg bg-[#eef4ff] text-[#1d4ed8]" aria-hidden="true"><Pencil className="size-3.5" strokeWidth={1.8} /></span></p>
       <span className="ml-2 inline-flex items-center gap-1.5 rounded-lg border border-[#bfd0f5] bg-[#eef4ff] px-2.5 py-1 text-[13px] font-medium text-[#0b1e4b]"><LayoutGrid className="size-4 text-[#1d4ed8]" strokeWidth={1.8} aria-hidden="true" /> {project}</span>
       <span className="inline-flex items-center gap-1.5 rounded-lg border border-[#bfd0f5] bg-[#eef4ff] px-2.5 py-1 text-[13px] font-medium text-[#0b1e4b]"><Globe className="size-4 text-[#1d4ed8]" strokeWidth={1.8} aria-hidden="true" /> {langLabel}</span>

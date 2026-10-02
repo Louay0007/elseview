@@ -1,0 +1,152 @@
+{
+  "accepted_submissions": 4,
+  "accepted_writes": 48,
+  "ai_job_created_age_seconds_max": 0.550121,
+  "autosave_latency_ms": {
+    "p50": 30.339792003360344,
+    "p95": 45.17370799658238
+  },
+  "concurrency": 4,
+  "duration_seconds": 0.5370340840017889,
+  "hardware": {
+    "architecture": "arm64",
+    "logical_cpus": 8,
+    "os": "Darwin",
+    "physical_memory_bytes": 17179869184,
+    "python": "3.12.14"
+  },
+  "memory_scope": "process lifetime high-water RSS, includes fixtures/client, excludes PostgreSQL",
+  "mock_inference_blocked_seconds": 0.4949994999988121,
+  "payload_bytes": {
+    "max": 148,
+    "min": 147
+  },
+  "pool_samples": [
+    {
+      "checked_in": 1,
+      "checked_out": 0,
+      "overflow": -4,
+      "size": 5
+    },
+    {
+      "checked_in": 0,
+      "checked_out": 4,
+      "overflow": -1,
+      "size": 5
+    },
+    {
+      "checked_in": 1,
+      "checked_out": 4,
+      "overflow": 0,
+      "size": 5
+    },
+    {
+      "checked_in": 3,
+      "checked_out": 2,
+      "overflow": 0,
+      "size": 5
+    },
+    {
+      "checked_in": 1,
+      "checked_out": 4,
+      "overflow": 0,
+      "size": 5
+    },
+    {
+      "checked_in": 1,
+      "checked_out": 4,
+      "overflow": 0,
+      "size": 5
+    },
+    {
+      "checked_in": 1,
+      "checked_out": 4,
+      "overflow": 0,
+      "size": 5
+    },
+    {
+      "checked_in": 2,
+      "checked_out": 3,
+      "overflow": 0,
+      "size": 5
+    },
+    {
+      "checked_in": 2,
+      "checked_out": 3,
+      "overflow": 0,
+      "size": 5
+    },
+    {
+      "checked_in": 2,
+      "checked_out": 3,
+      "overflow": 0,
+      "size": 5
+    },
+    {
+      "checked_in": 1,
+      "checked_out": 4,
+      "overflow": 0,
+      "size": 5
+    },
+    {
+      "checked_in": 1,
+      "checked_out": 4,
+      "overflow": 0,
+      "size": 5
+    },
+    {
+      "checked_in": 1,
+      "checked_out": 4,
+      "overflow": 0,
+      "size": 5
+    },
+    {
+      "checked_in": 1,
+      "checked_out": 4,
+      "overflow": 0,
+      "size": 5
+    },
+    {
+      "checked_in": 3,
+      "checked_out": 2,
+      "overflow": 0,
+      "size": 5
+    },
+    {
+      "checked_in": 1,
+      "checked_out": 4,
+      "overflow": 0,
+      "size": 5
+    },
+    {
+      "checked_in": 1,
+      "checked_out": 4,
+      "overflow": 0,
+      "size": 5
+    },
+    {
+      "checked_in": 1,
+      "checked_out": 4,
+      "overflow": 0,
+      "size": 5
+    },
+    {
+      "checked_in": 1,
+      "checked_out": 4,
+      "overflow": 0,
+      "size": 5
+    },
+    {
+      "checked_in": 3,
+      "checked_out": 2,
+      "overflow": 0,
+      "size": 5
+    }
+  ],
+  "queue_age_scope": "created age of the single running AI job, includes execution wait",
+  "rss_peak_after_bytes": 232374272,
+  "rss_peak_before_bytes": 229588992,
+  "schema_version": 1,
+  "topology": "one Python process; TestClient ASGI portal + embedded runner on same event loop; real PostgreSQL; local rate limiter; no HTTP socket or Valkey",
+  "writes_per_session": 12
+}

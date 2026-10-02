@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuthLocale } from "@/components/auth/AuthLocale";
-import { BackToTesterHome, TesterShell } from "@/components/tester/TesterShell";
+import { TesterShell } from "@/components/tester/TesterShell";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { mockRunnerSteps } from "./testerMocks";
 export default function TesterRunner() {
@@ -10,7 +10,6 @@ export default function TesterRunner() {
   const current = mockRunnerSteps[Math.min(step, mockRunnerSteps.length - 1)];
   const act = (ok: string) => setMsg(ok);
   return (<TesterShell>
-    <BackToTesterHome />
     <h1 className="text-[28px] font-bold text-black">{text({ en: "Answer the study.", fr: "Répondez à l’étude." })}</h1>
     <p className="mt-2 text-[16px] text-[#6d6d70]">{text({ en: "Read, answer, send.", fr: "Lisez, répondez, envoyez. Partez quand vous voulez." })}</p>
     {!consent ? (<Card className="mt-6 rounded-[18px]"><CardHeader><CardTitle>{text({ en: "Before you start", fr: "Avant de commencer" })}</CardTitle>

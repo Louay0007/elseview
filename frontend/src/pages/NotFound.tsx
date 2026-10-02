@@ -2,6 +2,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import { useOptionalAuthLocale } from "@/components/auth/AuthLocale";
 import { Home, ArrowLeft } from "lucide-react";
+import { authRoute, routes } from "@/lib/routes";
 
 const NotFound = () => {
   const location = useLocation();
@@ -45,7 +46,7 @@ const NotFound = () => {
           </button>
           
           <button
-            onClick={() => navigate("/dashboard?role=researcher")}
+            onClick={() => navigate(authRoute("login", "researcher"))}
             className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-full bg-[#1d4ed8] px-6 text-[15px] font-medium text-white transition-colors hover:bg-[#1e40af] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0a84ff] focus-visible:ring-offset-2"
           >
             <Home className="size-[18px]" strokeWidth={1.6} aria-hidden="true" />

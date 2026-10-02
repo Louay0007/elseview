@@ -20,6 +20,7 @@ import { useWorkspace } from "@/components/workspace/WorkspaceContext";
 import { Slider } from "@/components/ui/slider";
 import { Checkbox } from "@/components/ui/checkbox";
 import { panelCredits, panelSizeLabel } from "@/lib/pricing";
+import { routes } from "@/lib/routes";
 
 const PRESETS = [5, 25, 50, 200, 500, 1000];
 const NATIONALITIES = ["Emirati", "Saudi Arabian", "East Asian", "Asian Expats", "Arab Expats", "Europeans"];
@@ -410,10 +411,10 @@ export function RecruitPanel({ variant = "standalone", onSummary, footer, study 
           
       {footer ?? (!embedded ? (
         <div className="mt-6 flex items-center justify-between gap-3">
-            <button type="button" onClick={() => goWithParams(studyQs ? `/studies/create?${studyQs}` : "/studies/create")} className="inline-flex min-h-[48px] items-center gap-2 rounded-full border border-[#18181b] px-6 text-[14.5px] font-medium text-black hover:bg-[#f7f7f8]">
+            <button type="button" onClick={() => goWithParams(studyQs ? `/studies/new?${studyQs}` : "/studies/new")} className="inline-flex min-h-[48px] items-center gap-2 rounded-full border border-[#18181b] px-6 text-[14.5px] font-medium text-black hover:bg-[#f7f7f8]">
               <ArrowLeft className="size-4" strokeWidth={1.8} aria-hidden="true" />Previous
             </button>
-            <button type="button" onClick={() => goWithParams(studyQs ? `/publish?${studyQs}` : "/publish")} className="inline-flex min-h-[48px] items-center gap-2 rounded-full bg-[#18181b] px-8 text-[14.5px] font-semibold text-white hover:bg-black">
+            <button type="button" onClick={() => goWithParams(studyQs ? `/publish?${studyQs}` : routes.publish)} className="inline-flex min-h-[48px] items-center gap-2 rounded-full bg-[#18181b] px-8 text-[14.5px] font-semibold text-white hover:bg-black">
               Next<ArrowRight className="size-4" strokeWidth={1.8} aria-hidden="true" />
             </button>
           </div>

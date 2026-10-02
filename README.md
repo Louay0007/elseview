@@ -2,15 +2,25 @@
 
 **Brand:** Elseview — See what you’re missing.
 
+## Official frontend
+
+`frontend/` is the official frontend for this repository. The supplied React, TypeScript, Vite, and Tailwind design retains its full landing page, GSAP animations, and smooth scrolling. Landing copy and metadata use Elseview branding and describe user research and AI-powered testing. Authentication/workspace screens remain UI mocks; they are not integrated with the Elseview backend and must not be treated as production authentication.
+
+Use Node 24 and pnpm: `cd frontend && pnpm install --frozen-lockfile && pnpm dev --host 127.0.0.1 --port 8080 --strictPort`. Open `http://localhost:8080`. This supplied frontend runs directly with Vite; it does not include the former Dockerfile or Caddy configuration. It does proxy `/api` to the backend: set `API_PROXY_TARGET` (Compose dev sets `http://backend:8000`, otherwise it defaults to `http://localhost:8000`), or workspace screens render their empty state. Historical frontend Compose commands below do not apply to this replacement. Backend services are unchanged.
+
+Validation: `pnpm test`, `pnpm exec tsc -p tsconfig.app.json --noEmit`, and `pnpm build`. See `frontend/README.md` for the supplied frontend documentation. Older frontend acceptance descriptions below are historical and do not describe the replacement UI.
+
+Landing SEO includes matching static and client-rendered titles/descriptions, social metadata, and truthful Organization structured data. Before public launch, confirm the production domain, then add its canonical URL, `og:url`, absolute social-image URLs, and public homepage sitemap entry; advertise the sitemap in `robots.txt`. The previous Mediterra domain is intentionally not reused. Rankings are not guaranteed; the SPA's full content still depends on JavaScript, so prerendering/server rendering remains a future deployment consideration.
+
 **What remains:** [Completion and release plan](BACKEND_COMPLETION_PLAN.md) tracks missing features, full-product acceptance and production prerequisites. For the latest executed backend evidence and schema head, use [Implementation status](docs/backend/IMPLEMENTATION_STATUS.md); older phase descriptions below are historical checkpoints.
 
-Current completion increments add consented geographic/experience targeting, reviewed language assessments and consent history, private participant response/review/appeal/reward/payment/attendance history, bounded single-call AI depth estimates, authenticated reporting and private PDF/XLSX exports, durable auth/recruitment invitation email, opt-in interview/diary email reminders, V2 five-second exposure and authenticated diary recovery. The last fully validated migration chain reaches `028_notification_delivery`; revision-2 AI and029 integration are in progress. Apply additive migrations only through the approved operator workflow, never by resetting data. Full feature/product/production completion is not claimed; see the current [validation checkpoint](docs/backend/IMPLEMENTATION_STATUS.md#completion-plan-increment--partial-development).
+Current backend increments include transactional webhooks, multistep AI and privacy-restricted subgroup results, immutable diary prompt subsets, managed-service quotes, purchased software credits, bounded WAV/MP4 validation, voice-reference scoring and reviewed interview drafts with report/privacy integration. The current migration head is `038_interview_drafts`. Apply additive migrations through the operator workflow; never reset existing data. Automatic cloud transcription, external sandbox/vendor adapters and live/provider acceptance remain incomplete. See [backend API guidance](backend/CUSTOMER_API.md) and [current verification evidence](docs/backend/IMPLEMENTATION_STATUS.md).
 
 P18 adds checked OpenAPI/error contracts, React/browser contract fixtures, guarded
 load measurements and restart checks. P19 adds integrated backend acceptance and
 a ten-story coverage map; remaining combined browser/live-provider/production
 gates are explicit, not silently marked passed. Start with
-`/Users/user/Workspace/startup-act/docs/backend/P18_P19_ACCEPTANCE.md`.
+`docs/backend/P18_P19_ACCEPTANCE.md`.
 
 ## Elseview naming
 
@@ -19,9 +29,9 @@ gates are explicit, not silently marked passed. Start with
 - Active volumes: `elseview_postgres_data` and `elseview_private_data`.
 - Databases: `elseview_app` and the guarded `elseview_test`.
 - Packages: `elseview-backend` and `elseview-frontend`; backend logger: `elseview`.
-- Workspace path stays `/Users/user/Workspace/startup-act/`; internal service DNS names and `/api/v1` routes stay unchanged.
+- The absolute workspace path on this machine may change; internal service DNS names and `/api/v1` routes stay unchanged.
 
-The existing P01 installation was migrated by copying stopped volumes and renaming the copied databases. Original `research-platform_postgres_data` and `research-platform_private_data` volumes remain as rollback copies, not active storage. Private dumps and the before/after data comparison are in the ignored directory `/Users/user/Workspace/startup-act/.tools/elseview-backup/`. Do not publish backups or delete them before confirming recovery needs.
+The existing P01 installation was migrated by copying stopped volumes and renaming the copied databases. Original `research-platform_postgres_data` and `research-platform_private_data` volumes remain as rollback copies, not active storage. Private dumps and the before/after data comparison are in the ignored directory `.tools/elseview-backup/`. Do not publish backups or delete them before confirming recovery needs.
 
 On this migrated installation, Compose may warn that the adopted Elseview volumes were not originally created by Compose. Their explicit names intentionally select the preserved data. Fresh installations create these volumes normally; no destructive reset is required.
 
@@ -50,30 +60,30 @@ jobs. Live AI requires explicit operator capability/privacy/host/pricing approva
 development and ordinary tests remain mock. No authentication bypass is provided.
 
 P06/P07 API usage, safe retry rules and development limitations are documented in
-`/Users/user/Workspace/startup-act/docs/backend/P06_P07_API.md`. Apply the additive
+`docs/backend/P06_P07_API.md`. Apply the additive
 `006_recruiting → 007_collection → 008_reviews → 009_analytics → 010_ai → 011_methods → 012_longitudinal → 013_evaluation → 014_templates → 015_billing` migrations explicitly with
-`/Users/user/Workspace/startup-act/scripts/dev exec -T backend alembic upgrade head`.
+`./scripts/dev exec -T backend alembic upgrade head`.
 Do not reset the application database to install these phases.
 
 Review/payment and analytics/report API contracts, operational boundaries and safe
-retry examples: `/Users/user/Workspace/startup-act/docs/backend/P08_P09_API.md`.
+retry examples: `docs/backend/P08_P09_API.md`.
 Payment entries record manually verified evidence; this backend does not move money.
 
 AI configuration, optional consent, advanced method contracts and browser limitations:
-`/Users/user/Workspace/startup-act/docs/backend/P10_P11_API.md`.
+`docs/backend/P10_P11_API.md`.
 
 P12/P13 add consent-bound interview bookings, in-app reminders, immutable diary
 occurrence sessions, private recording/transcript evidence, and a standalone human
 evaluation workbench with blind pairwise assignments, versioned datasets, annotation,
 adjudication and reviewed exports. Minimal React schedule/evaluation forms are available.
-Contracts and limitations: `/Users/user/Workspace/startup-act/docs/backend/P12_P13_API.md`.
+Contracts and limitations: `docs/backend/P12_P13_API.md`.
 
 P14/P15 add 23 versioned template recipes and opt-in commercial plan/allowance/usage,
 invoice, manual payment and credit workflows using the existing P08 ledger. Publication,
 response and AI add-on hooks preserve frozen prices and duplicate-safe source IDs.
 Unactivated development workspaces remain unbilled. Commercial activation requires
 explicit reviewed rules; no bank/card automation or jurisdictional compliance claim.
-See `/Users/user/Workspace/startup-act/docs/backend/P14_P15_API.md`.
+See `docs/backend/P14_P15_API.md`.
 
 ## P02 — Authentication and workspaces
 
@@ -164,12 +174,12 @@ A working Docker engine and Docker Compose, plus Python 3 to generate developmen
 Run once; the setup command refuses to overwrite existing credentials:
 
 ```sh
-python3 /Users/user/Workspace/startup-act/scripts/setup_dev.py
-/Users/user/Workspace/startup-act/scripts/dev build
-/Users/user/Workspace/startup-act/scripts/dev up -d database cache backend
-/Users/user/Workspace/startup-act/scripts/dev exec -T backend python -m alembic upgrade head
-/Users/user/Workspace/startup-act/scripts/dev exec -T backend python -m app.seed
-/Users/user/Workspace/startup-act/scripts/dev up -d frontend
+python3 scripts/setup_dev.py
+./scripts/dev build
+./scripts/dev up -d database cache backend
+./scripts/dev exec -T backend python -m alembic upgrade head
+./scripts/dev exec -T backend python -m app.seed
+./scripts/dev up -d frontend
 ```
 
 Visit `http://localhost:8080`. Only this loopback frontend port is published. The frontend proxies `/api` to FastAPI. Database and cache do not publish host ports.
@@ -183,11 +193,11 @@ The wrapper always uses the same environment file and base/development Compose p
 The full guarded suite uses the separate `elseview_test` database. It migrates/reset that test schema; never point the runner at valuable data.
 
 ```sh
-/Users/user/Workspace/startup-act/scripts/dev exec -T -e TEST_ALLOW_RESET=elseview_test backend python -m app.test_runner -q --cov=app --cov-report=term-missing
-/Users/user/Workspace/startup-act/scripts/dev exec -T backend python -m ruff check app migrations tests
-/Users/user/Workspace/startup-act/scripts/dev exec -T backend python -m ruff format --check app migrations tests
-/Users/user/Workspace/startup-act/scripts/dev exec -T backend python -m pip check
-python3 /Users/user/Workspace/startup-act/scripts/validate_blueprint.py
+./scripts/dev exec -T -e TEST_ALLOW_RESET=elseview_test backend python -m app.test_runner -q --cov=app --cov-report=term-missing
+./scripts/dev exec -T backend python -m ruff check app migrations tests
+./scripts/dev exec -T backend python -m ruff format --check app migrations tests
+./scripts/dev exec -T backend python -m pip check
+python3 scripts/validate_blueprint.py
 ```
 
 For isolated local validation without resetting an existing database, run:
@@ -228,4 +238,4 @@ The container development target includes test dependencies intentionally. A sma
 
 ## Evidence
 
-See `/Users/user/Workspace/startup-act/docs/backend/IMPLEMENTATION_STATUS.md` for actual test/build results and limits. The implementation roadmap remains `/Users/user/Workspace/startup-act/BACKEND_IMPLEMENTATION_PLAN.md`.
+See `docs/backend/IMPLEMENTATION_STATUS.md` for actual test/build results and limits. The implementation roadmap remains `BACKEND_IMPLEMENTATION_PLAN.md`.

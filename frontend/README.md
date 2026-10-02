@@ -1,10 +1,10 @@
 # Elseview frontend
 
-React 19, TypeScript, Vite, Tailwind CSS and shadcn/ui. The frontend contains the landing page and backend-aligned authentication/account previews. No authentication API is connected. Research dashboards and administrative product pages are not implemented.
+React 19, TypeScript, Vite, Tailwind CSS and shadcn/ui. The frontend holds the landing page, the authentication flow, and two separate product spaces: the **researcher** workspace and the **tester** space.
+
+Every path lives in [`src/lib/routes.ts`](src/lib/routes.ts). No component writes a path literal — they import the table and use `withQuery`/`authRoute` to attach query parameters. Adding or renaming a route is a one-line change there, and `src/lib/auth.test.ts` fails if a route stops being served or a link loses its destination.
 
 ## Run locally
-
-From the repository root:
 
 ```sh
 cd frontend
@@ -12,27 +12,52 @@ pnpm install --frozen-lockfile
 pnpm dev --host localhost --port 8080 --strictPort
 ```
 
-Use Node.js 24 and pnpm. Open the URL printed by Vite. Visit `/` for the landing page or `/auth/login` for sign-in.
+Use Node.js 24 and pnpm. Open the URL printed by Vite and visit `/` for the landing page.
 
-No frontend environment file, database, Docker service, backend process, or credentials are required. Use only fictional information and demo passwords.
+Workspace and tester screens call the backend through `apiFetch` (`src/lib/api.ts`) against `/api/v1`. Without a reachable backend those pages render their empty state; the landing page, the auth flow and the legal pages work standalone.
 
-## Available routes
+## Routes
 
-- `/`: landing page.
-- `/auth/login` and `/login`: email/password sign-in preview.
-- `/auth/signup` and `/signup`: optional display name, email and password; no invitation required.
-- `/auth/verify-email`: full email code; `?resend=1` opens the resend form. Completion continues to `/auth/complete-profile`.
-- `/auth/complete-profile`: profile completion preview (memory-only, `?role=researcher|tester`); includes Log out.
-- `/auth/recover`, `/auth/reset-password`: request instructions and enter a reset code/new password.
-- `/auth/invitation`: workspace invitation code, separate from registration.
-- `/auth/account`: synthetic read-only identity and account navigation.
-- `/auth/workspaces`: choose/create a local workspace preview; `?state=empty` shows first use.
-- `/auth/sessions`: synthetic session references/expiry dates and confirmed local revocation; `?state=empty` shows the empty state.
-- `/auth/delete-account`: current password, exact confirmation phrase and confirmation dialog. `?state=held`, `last-owner` or `financial` preview blockers.
-- `/auth/session`: expired by default; `?state=restoring` shows bounded loading, `?state=offline` shows recovery.
-- Legacy `/mfa`, `/auth/mfa` and `/auth/enroll-mfa` redirect to login; the backend does not implement authenticator enrollment.
+**Landing and legal**
 
-Sign-in completion leads to an explicit account preview, never a production session. Forms/list mutations are memory-only and reset after reload/navigation. `/app/*` remains unavailable. EN/FR/AR and RTL are supported; only language preference is stored locally. Auth forms support `?state=invalid`, `expired`, `server`, `rate-limited` and `offline` for design review after submission; these are presentation fixtures, not backend decisions.
+| Path | Screen |
+| --- | --- |
+| `/` | Landing page |
+| `/legal/terms`, `/legal/privacy` | Legal copy (placeholders — the policies are not published yet) |
+
+**Authentication** — each mode mounts `AuthFlow` under its own key, so a refresh or a shared link lands on the right step. `?role=researcher|tester` selects the space the account belongs to.
+
+| Path | Screen |
+| --- | --- |
+| `/auth/login` | Sign in |
+| `/auth/signup` | Register; no invitation required |
+| `/auth/verify-email` | Enter the email code; `?resend=1` opens the resend form |
+| `/auth/recover`, `/auth/reset-password` | Request instructions, then set a new password |
+| `/auth/invitation` | Workspace invitation code, separate from registration |
+| `/auth/complete-profile` | Profile completion; includes Log out |
+
+**Researcher workspace**
+
+| Path | Screen |
+| --- | --- |
+| `/dashboard` | Home: test templates, results at a glance |
+| `/studies/new`, `/studies/:studyId/edit` | Study builder |
+| `/recruit`, `/publish` | Recruitment and publishing steps |
+| `/reviews`, `/reports/:reportId` | Report queue and one report |
+| `/preview` | Participant-facing runner preview |
+| `/analytics`, `/history` | Results and past work |
+| `/account`, `/account/notifications`, `/account/refer` | Profile, notifications, referral |
+| `/settings`, `/workspace/billing`, `/workspace/credits`, `/workspace/credits/buy` | Settings, billing, credits |
+
+The builder passes a study between steps as a query string. `studyQuery` returns params, not a pre-built string, so `withQuery` owns encoding and an unnamed study travels without an empty `name=`.
+
+**Tester space** — a tester must never reach a researcher page that manages studies, credits, reports or billing. All `/tester/*` pages currently render fixture data.
+
+`/tester`, `/tester/onboarding`, `/tester/studies`, `/tester/runner`, `/tester/sessions`, `/tester/history`, `/tester/notifications`, `/tester/earnings`, `/tester/profile`
+
+**Legacy aliases** — an old bookmark or shared link redirects instead of hitting the not-found page: `/login`, `/signup`, `/mfa`, `/auth/mfa`, `/auth/enroll-mfa`, `/studies/create`, `/study-preview`, `/terms`, `/privacy`.
+
+Anything else renders `NotFound`.
 
 ## Verify
 
@@ -44,8 +69,8 @@ pnpm build
 pnpm preview --host localhost
 ```
 
-The tests cover authentication validation, route boundaries, landing copy and SEO. See [the local testing guide](docs/local-testing.md) for browser checks. The old workspace design plan is historical, not the current frontend specification.
+The tests cover authentication validation, the route table and its invariants, an audit that every link in `src` resolves to a real route, landing copy and SEO. See [the local testing guide](docs/local-testing.md) for browser checks.
 
 ## Preview boundaries
 
-Authentication, invitations, recovery, profile completion, workspace creation, revocation and deletion are UI simulations. They do not establish identity, verify codes, send email, mutate server records or call APIs. The active routes no longer use the legacy browser-local authenticated flag. Use fictional information only. Actual authorization, token transport, email delivery and durable account lifecycle remain integration work.
+The authentication flow is a UI simulation: it does not establish identity, verify codes, send email, or call an API. Use fictional information and demo passwords only. Actual authorization, token transport, email delivery and durable account lifecycle remain integration work.

@@ -2,6 +2,7 @@ import { ClipboardList, Compass, MessageCircleQuestion } from "lucide-react";
 import { MinimalistHero } from "@/components/ui/minimalist-hero";
 import { MediterraLogo } from "@/components/MediterraLogo";
 import { useOptionalAuthLocale } from "@/components/auth/AuthLocale";
+import { authRoute } from "@/lib/routes";
 
 export function MediterraMinimalistHero() {
   const { text } = useOptionalAuthLocale();
@@ -18,7 +19,7 @@ export function MediterraMinimalistHero() {
         fr: "Votre prochaine grande idée mérite mieux qu’une intuition. Explorez la recherche utilisateur et les tests assistés par IA avec Elseview : un aperçu produit pour challenger vos hypothèses, repérer les frictions et trouver votre prochaine étape.",
       })}
       readMoreLabel={text({ en: "Get started for free", fr: "Commencer gratuitement" })}
-      readMoreLink="/auth/signup?role=researcher"
+      readMoreLink={authRoute("signup", "researcher")}
       onCtaClick={() => window.dispatchEvent(new CustomEvent("elseview:open-role-selection"))}
       imageSrc="/images/hero/elseview-research-session.png"
       imageAlt={text({

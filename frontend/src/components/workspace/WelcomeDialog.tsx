@@ -1,6 +1,7 @@
 import { User } from "lucide-react";
 import { useAuthLocale } from "@/components/auth/AuthLocale";
 import { cn } from "@/lib/utils";
+import { routes } from "@/lib/routes";
 
 type WelcomeDialogProps = {
   open: boolean;
@@ -63,7 +64,7 @@ export function WelcomeDialog({ open, workspaceName, onGoToDashboard }: WelcomeD
 
           <p className="mt-6">
             <a
-              href="/dashboard"
+              href={routes.dashboard}
               onClick={(event) => {
                 event.preventDefault();
                 onGoToDashboard();

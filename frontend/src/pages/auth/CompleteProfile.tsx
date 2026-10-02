@@ -11,6 +11,7 @@ import { apiFetch, backendAvailable } from "@/lib/api";
 import { useWorkspace } from "@/components/workspace/WorkspaceContext";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { routes } from "@/lib/routes";
 
 const jobRoles = [
   { en: "Product Manager", fr: "Chef de produit" },
@@ -108,7 +109,7 @@ export default function CompleteProfile() {
       return;
     }
     const goNext = () => {
-      const target = role === "researcher" ? "/dashboard" : roleLink("/auth/login");
+      const target = role === "researcher" ? routes.dashboard : roleLink(routes.login);
       const query = new URLSearchParams({ role, welcome: "1", firstName: firstName.trim() });
       navigate(role === "researcher" ? `${target}?${query.toString()}` : target);
     };
@@ -135,7 +136,7 @@ export default function CompleteProfile() {
   };
 
   const logout = () => {
-    navigate(roleLink("/auth/login"));
+    navigate(roleLink(routes.login));
   };
 
   const inputClass = (invalid = false) =>

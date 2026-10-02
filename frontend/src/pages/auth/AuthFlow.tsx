@@ -8,6 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { authWords as words, validateAuth, type AuthMode, type AuthField, type AuthIssue } from "@/lib/auth";
 import { apiFetch, setAccessToken, setCsrfToken } from "@/lib/api";
+import TesterSignup from "@/pages/auth/TesterSignup";
+import TesterSignin from "@/pages/auth/TesterSignin";
+import { routes } from "@/lib/routes";
 
 const screens = {
   login: { title: words("Welcome back.", "Content de vous revoir."), description: words("Sign in to your Elseview account.", "Connectez-vous à votre compte Elseview."), action: words("Sign in", "Se connecter"), fields: ["email", "password"] },
@@ -38,7 +41,7 @@ const success = {
   reset: words("Password reset. You are signed out everywhere.", "Mot de passe réinitialisé. Déconnecté partout."),
   invitation: words("Invitation accepted.", "Invitation acceptée."),
 };
-const next = { login: "/auth/login", signup: "/auth/verify-email", verify: "/auth/complete-profile", recover: "/auth/reset-password", reset: "/auth/login", invitation: "/auth/login" };
+const next = { login: routes.login, signup: routes.verifyEmail, verify: routes.completeProfile, recover: routes.resetPassword, reset: routes.login, invitation: routes.login };
 const nextLabels = {
   login: words("Explore account preview", "Voir l’aperçu du compte"),
   signup: words("Continue to verification", "Continuer vers la vérification"),
@@ -67,6 +70,12 @@ export default function AuthFlow({ mode }: { mode: AuthMode }) {
   useEffect(() => { if (done) result.current?.focus(); }, [done]);
   const screen = screens[mode];
   const role = params.get("role") === "tester" ? "tester" : "researcher";
+  if (mode === "signup" && role === "tester") {
+    return <TesterSignup />;
+  }
+  if (mode === "login" && role === "tester") {
+    return <TesterSignin />;
+  }
   const roleLabel = role === "tester" ? words("tester", "testeur") : words("researcher", "chercheur");
   const roleLink = (path: string) => `${path}${path.includes("?") ? "&" : "?"}role=${role}`;
   const fields: AuthField[] = resend ? ["email"] : screen.fields;
@@ -108,7 +117,7 @@ export default function AuthFlow({ mode }: { mode: AuthMode }) {
           const result = await apiFetch<{ access_token: string; csrf_token: string }>("/auth/login", { method: "POST", body: { email: values.email, password: values.password } });
           setAccessToken(result.access_token);
           setCsrfToken(result.csrf_token);
-          navigate(roleLink("/account"));
+          navigate(roleLink(routes.account));
           return;
         }
         if (mode === "verify") {
@@ -195,17 +204,17 @@ export default function AuthFlow({ mode }: { mode: AuthMode }) {
       })}
       {mode === "login" && <div className="flex items-center justify-between gap-4 text-[15px] text-[#6d6d70]">
         <label className="inline-flex min-h-11 items-center gap-3">
-          <input type="checkbox" checked={rememberMe} onChange={event => setRememberMe(event.target.checked)} className="size-5 accent-[#ff61ad]" />
+          <input type="checkbox" checked={rememberMe} onChange={event => setRememberMe(event.target.checked)} className="size-5 accent-[#1d4ed8]" />
           {text(words("Remember me", "Se souvenir de moi"))}
         </label>
-        <Link to={roleLink("/auth/recover")} className="min-h-11 inline-flex items-center hover:text-[#183a68]">{text(words("Forgot password?", "Mot de passe oublié ?"))}</Link>
+        <Link to={roleLink(routes.recover)} className="min-h-11 inline-flex items-center hover:text-[#183a68]">{text(words("Forgot password?", "Mot de passe oublié ?"))}</Link>
       </div>}
       <Button disabled={busy} className={`${authButtonClass} ${mode === "login" ? "rounded-full bg-[#d9d9da] text-white hover:bg-[#c9c9ca]" : ""}`} type="submit">{busy ? <><LoaderCircle size={16} className="animate-spin motion-reduce:animate-none" aria-hidden="true" />{text(words("Please wait…", "Veuillez patienter…"))}</> : <>{text(resend ? words("Send verification instructions", "Envoyer les instructions") : screen.action)}<ArrowRight size={16} aria-hidden="true" className="rtl:rotate-180" /></>}</Button>
 
-      {mode === "login" && <div className="text-center text-sm text-[#626870]"><span>{text(words("New to Elseview?", "Nouveau sur Elseview ?"))} </span><Link to={roleLink("/auth/signup")} className={authLinkClass}>{text(words("Create an account", "Créer un compte"))}</Link><div><Link to={roleLink("/auth/verify-email?resend=1")} className={authLinkClass}>{text(words("Verify your email", "Vérifier votre e-mail"))}</Link></div></div>}
+      {mode === "login" && <div className="text-center text-sm text-[#626870]"><span>{text(words("New to Elseview?", "Nouveau sur Elseview ?"))} </span><Link to={roleLink(routes.signup)} className={authLinkClass}>{text(words("Create an account", "Créer un compte"))}</Link><div><Link to={roleLink("/auth/verify-email?resend=1")} className={authLinkClass}>{text(words("Verify your email", "Vérifier votre e-mail"))}</Link></div></div>}
       {mode === "signup" && <p className="text-center text-sm text-[#626870]">{text(words("Already have an account?", "Déjà un compte ?"))} <Link to={roleLink("/auth/login")} className={authLinkClass}>{text(screens.login.action)}</Link></p>}
       {mode === "verify" && <div className="text-center"><button disabled={busy} type="button" className={authLinkClass} onClick={()=>{setResend(!resend);setIssues({});setNotice(null);}}>{text(resend ? words("I already have a code", "J’ai déjà un code") : words("Request a new code", "Demander un nouveau code"))}</button></div>}
-      {mode === "reset" && <div className="text-center"><Link to={roleLink("/auth/recover")} className={authLinkClass}>{text(words("Request a new reset code", "Demander un nouveau code"))}</Link></div>}
+      {mode === "reset" && <div className="text-center"><Link to={roleLink(routes.recover)} className={authLinkClass}>{text(words("Request a new reset code", "Demander un nouveau code"))}</Link></div>}
       {mode === "invitation" && <p className="text-center text-sm text-[#626870]">{text(words("Wrong account?", "Mauvais compte ?"))} <Link to={roleLink("/auth/login")} className={authLinkClass}>{text(screens.login.action)}</Link></p>}
     </form>}
     {mode !== "login" && <div className="mt-4 text-center"><Link to={roleLink("/auth/login")} className={authLinkClass}><ArrowLeft size={15} aria-hidden="true" className="rtl:rotate-180" />{text(words("Back to sign in", "Retour à la connexion"))}</Link></div>}
